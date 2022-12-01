@@ -13,29 +13,27 @@ export enum Part {
     PART_2 = "PART 2"
 }
 
-export function getRawData(day: number, test: Type, testData: string, part: Part): string {
-    if (test === Type.TEST) {
-        return testData;
-    }
-    const current_test_phase_filename = `./data/day_${day}_${part === Part.PART_2 ? 2 : 1}.dat`
+export function getRawData(day: number, test: Type,  part: Part): string {
+    const testDataSuffix = test === Type.TEST ? "_test" : "";
+    const current_test_phase_filename = `./data/day_${day}_${part === Part.PART_2 ? 2 : 1}${testDataSuffix}.dat`
     if (fs.existsSync(current_test_phase_filename)) {
         return fs.readFileSync(current_test_phase_filename, 'utf-8');
     }
-    return fs.readFileSync(`./data/day_${day}.dat`, 'utf-8');
+    return fs.readFileSync(`./data/day_${day}${testDataSuffix}.dat`, 'utf-8');
 }
 
-export function getData(day: number, test: Type, testData: string, part: Part): string[] {
-    return getRawData(day,test,testData,part).split(/\r?\n/);
+export function getData(day: number, test: Type, part: Part): string[] {
+    return getRawData(day, test, part).split(/\r?\n/);
 }
 
-export function run(day: number, testData: string | [string, string], types: Type[], fct: (lines: string[], part: Part) => void, parts: Part[] = [Part.ALL]): void {
+export function run(day: number, types: Type[], fct: (lines: string[], part: Part) => void, parts: Part[] = [Part.ALL]): void {
     parts.forEach(part => {
         types.forEach(type => {
             const name = Type[type];
             console.log(`[${name}][${part}] Running`)
             const start = new Date()
-            const effectiveTestData = !Array.isArray(testData) ? testData : ((part === Part.PART_2) ? testData[1] : testData[0])
-            fct(getData(day, type, effectiveTestData, part), part)
+        
+            fct(getData(day, type, part), part)
             const duration = (new Date()).getTime() - start.getTime()
             console.log(`[${name}][${part}] Done in ${duration} ms`)
         })

@@ -1,18 +1,4 @@
 import { Part, run, Type } from "./day_utils"
-const testData = `1000
-2000
-3000
-
-4000
-
-5000
-6000
-
-7000
-8000
-9000
-
-10000`
 
 function parse(lines: string[]): (number | undefined)[] {
     return lines.map(line => line === "" ? undefined : parseInt(line, 10));
@@ -29,7 +15,7 @@ function puzzle(lines: string[], part: Part): void {
                 list[list.length - 1] += newValue;
             }
             return list;
-        }, 
+        },
         [0]
     );
 
@@ -45,4 +31,4 @@ function puzzle(lines: string[], part: Part): void {
     }
 }
 
-run(1, testData, [Type.TEST, Type.RUN], puzzle, [Part.PART_1, Part.PART_2])
+run(1, [Type.TEST, Type.RUN], puzzle, [Part.PART_1, Part.PART_2])
