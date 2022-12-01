@@ -1,0 +1,33 @@
+{
+    "name": "advent_of_code_2021",
+    "version": "1.0.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint src test --ext .ts",
+        "build:batch": "tsc -p tsconfig.prod.json",
+        "build:dev": "tsc -p tsconfig.json",
+        "start:dev": "node ./dist/dev/src/main_batch.js --configPath ../config-exemple --configPath ../config-default --cleanContexts",
+        "start:preprod": "node ./dist/dev/src/main_batch.js --configPath ../config-preprod --configPath ../config-default --cleanContexts",
+        "dev": "npm run build:dev && npm run start:dev ",
+        "test": "ts-node -r tsconfig-paths/register  node_modules/jasmine/bin/jasmine --config=jasmine.json"
+    },
+    "dependencies": {
+        "csv-parse": "^4.15.0",
+        "date-fns": "^2.29.3",
+        "module-alias": "^2.2.2",
+        "yaml": "^1.10.0",
+        "yargs": "^16.0.3"
+    },
+    "peerDependencies": {},
+    "devDependencies": {
+        "@types/node": "^14.10.1",
+        "@types/yargs": "^15.0.5",
+        "@typescript-eslint/eslint-plugin": "^4.4.1",
+        "@typescript-eslint/parser": "^4.4.1",
+        "eslint": "^7.11.0",
+        "ts-node": "^9.0.0",
+        "typescript": "^4.0.3"
+    }
+}
