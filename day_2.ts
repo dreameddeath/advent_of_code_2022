@@ -11,12 +11,12 @@ function puzzle(lines: string[], part: Part): void {
     
     if (part === Part.PART_1) {
         const result = "toto"
-        console.log(`Best ${result}`)
+        console.log(`Result ${result}`)
 
     }
     else {
         const result = "toto";
-        console.log(`Results ${result}`);
+        console.log(`Result ${result}`);
     }
 }
 
