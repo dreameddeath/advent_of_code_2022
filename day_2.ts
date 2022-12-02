@@ -46,9 +46,19 @@ function gain(round: Play[]): number {
     return res;
 }
 
-function findRequestedPlay(other: Play, expectedResult: Result): Play {
+const allPlays = [Play.PAPER, Play.ROCK, Play.SCISSORS];
+const allResults = [Result.DRAW, Result.LOSS, Result.WIN];
+const mapRequestedPlay:Map<Play,Map<Result,Play>>=new Map();
+allPlays.forEach(other=>{
+    const mapResults = new Map<Result,Play>(); 
+    mapRequestedPlay.set(other,mapResults);
+    allResults.forEach(expected=>
+         mapResults.set(expected,allPlays.filter(play => getResult(other, play) === expected)[0])
+    )
+    });
+/*function findRequestedPlay(other: Play, expectedResult: Result): Play {
     return [Play.PAPER, Play.ROCK, Play.SCISSORS].filter(play => getResult(other, play) === expectedResult)[0];
-}
+}*/
 
 
 function parsePart1(lines: string[]): Play[][] {
@@ -75,7 +85,7 @@ function puzzle(lines: string[], part: Part): void {
     }
     else {
         const result = parsePart2(lines)
-            .map(round => [round[0], findRequestedPlay(round[0], round[1])])
+            .map(round => [round[0], mapRequestedPlay.get(round[0])?.get(round[1]) as Play])
             .map(round => gain(round)).reduce((a, b) => a + b);
         console.log(`Result ${result}`);
     }
