@@ -1,6 +1,4 @@
-import { da } from 'date-fns/locale';
 import * as fs from 'fs';
-import { type } from 'os';
 
 export enum Type {
     TEST,
@@ -27,6 +25,7 @@ export function getData(day: number, test: Type, part: Part): string[] {
 }
 
 export function run(day: number, types: Type[], fct: (lines: string[], part: Part) => void, parts: Part[] = [Part.ALL]): void {
+    console.log(`[RUNNING] Day ${day}`)
     parts.forEach(part => {
         types.forEach(type => {
             const name = Type[type];
