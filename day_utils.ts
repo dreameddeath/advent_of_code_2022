@@ -39,10 +39,3 @@ export function run(day: number, types: Type[], fct: (lines: string[], part: Par
         })
     })
 }
-
-export function* generator(max: number): Generator<number> {
-    let i = 0;
-    while (i < max) {
-        yield (i++)
-    }
-}

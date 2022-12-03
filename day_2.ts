@@ -1,3 +1,4 @@
+import { applyMapOnItem, forcePresent } from "./utils";
 import { Part, run, Type } from "./day_utils"
 enum Play {
     ROCK = 1,
@@ -20,6 +21,8 @@ const parseMap = {
     "Z": Play.SCISSORS,
 }
 
+type KEYS = keyof typeof parseMap;
+
 const parseMapPart2 = {
     "X": Result.LOSS,
     "Y": Result.DRAW,
@@ -40,7 +43,7 @@ function getResult(other: Play, me: Play): Result {
     return (other < me) ? Result.WIN : Result.LOSS;
 }
 
-function gain(round: Play[]): number {
+function gain(round: [Play, Play]): number {
     const roundRes = getResult(round[0], round[1]);
     const res = round[1] + roundRes;
     return res;
@@ -48,45 +51,44 @@ function gain(round: Play[]): number {
 
 const allPlays = [Play.PAPER, Play.ROCK, Play.SCISSORS];
 const allResults = [Result.DRAW, Result.LOSS, Result.WIN];
-const mapRequestedPlay:Map<Play,Map<Result,Play>>=new Map();
-allPlays.forEach(other=>{
-    const mapResults = new Map<Result,Play>(); 
-    mapRequestedPlay.set(other,mapResults);
-    allResults.forEach(expected=>
-         mapResults.set(expected,allPlays.filter(play => getResult(other, play) === expected)[0])
+const mapRequestedPlay: Map<Play, Map<Result, Play>> = new Map();
+allPlays.forEach(other => {
+    const mapResults = new Map<Result, Play>();
+    mapRequestedPlay.set(other, mapResults);
+    allResults.forEach(expected =>
+        mapResults.set(expected, allPlays.filter(play => getResult(other, play) === expected)[0])
     )
-    });
-/*function findRequestedPlay(other: Play, expectedResult: Result): Play {
-    return [Play.PAPER, Play.ROCK, Play.SCISSORS].filter(play => getResult(other, play) === expectedResult)[0];
-}*/
+});
 
-
-function parsePart1(lines: string[]): Play[][] {
-    return lines.map(line => line.split(" ")
-        .map(v => parseMap[v as keyof typeof parseMap])
-    ).filter(round => round.length === 2);
+function parsePart1(lines: string[]): [Play, Play][] {
+    return lines.map(line => [applyMapOnItem(line[0], parseMap), applyMapOnItem(line[2], parseMap)]);
 }
 
 function parsePart2(lines: string[]): [Play, Result][] {
     return lines.map(line => {
-        const parts = line.split(" ");
         return [
-            parseMap[parts[0] as keyof typeof parseMap],
-            parseMapPart2[parts[1] as keyof typeof parseMapPart2]
-        ] as [Play, Result];
+            applyMapOnItem(line[0], parseMap),
+            applyMapOnItem(line[2], parseMapPart2)
+        ];
     });
 }
 
 
 function puzzle(lines: string[], part: Part): void {
     if (part === Part.PART_1) {
-        const result = parsePart1(lines).map(round => gain(round)).reduce((a, b) => a + b)
+        const result = parsePart1(lines)
+            .map(round => gain(round))
+            .reduce((a, b) => a + b)
         console.log(`Result ${result}`)
     }
     else {
         const result = parsePart2(lines)
-            .map(round => [round[0], mapRequestedPlay.get(round[0])?.get(round[1]) as Play])
-            .map(round => gain(round)).reduce((a, b) => a + b);
+            .map(round => [
+                round[0],
+                forcePresent(mapRequestedPlay.get(round[0])?.get(round[1]))
+            ] as [Play, Play])
+            .map(round => gain(round))
+            .reduce((a, b) => a + b);
         console.log(`Result ${result}`);
     }
 }

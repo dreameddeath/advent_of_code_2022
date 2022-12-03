@@ -1,3 +1,4 @@
+import { genericSort, reduceList, reverseSort } from "./utils";
 import { Part, run, Type } from "./day_utils"
 
 function parse(lines: string[]): (number | undefined)[] {
@@ -6,27 +7,21 @@ function parse(lines: string[]): (number | undefined)[] {
 
 
 function puzzle(lines: string[], part: Part): void {
-    const data = parse(lines);
-    const groups = data.reduce(
-        (list, newValue) => {
-            if (newValue === undefined) {
-                list.push(0);
-            } else {
-                list[list.length - 1] += newValue;
-            }
-            return list;
-        },
-        [0]
+    const data = parse(lines).reduce(
+        reduceList(
+            (list: number[], newValue) => (newValue === undefined) ? list.push(0) : list[list.length - 1] += newValue
+        ),
+        []
     );
 
-    groups.sort((a, b) => b - a);
+    data.sort(reverseSort(genericSort()));
     if (part === Part.PART_1) {
-        const result = groups[0]
+        const result = data[0]
         console.log(`Best: ${result}`)
 
     }
     else {
-        const result = groups[0] + groups[1] + groups[2];
+        const result = data[0] + data[1] + data[2];
         console.log(`Best 3: ${result}`);
     }
 }
