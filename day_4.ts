@@ -1,6 +1,5 @@
 import * as Utils from "./utils";
 import { Part, run, Type } from "./day_utils"
-import { number } from "yargs";
 
 interface Range {
     x: number,
