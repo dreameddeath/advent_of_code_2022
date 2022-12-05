@@ -101,3 +101,10 @@ export function forcePresent<I>(input: I):NonNullable<I> {
     }
     return input as NonNullable<I>;
 }
+
+export function forceType<O>(input: any,fct:(i:any)=>boolean):input is O {
+    if (input === undefined || input === null) {
+        return false;
+    }
+    return fct(input);
+}
