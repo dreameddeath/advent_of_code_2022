@@ -17,7 +17,11 @@ export function getRawData(day: number, test: Type,  part: Part): string {
     if (fs.existsSync(current_test_phase_filename)) {
         return fs.readFileSync(current_test_phase_filename, 'utf-8');
     }
-    return fs.readFileSync(`./data/day_${day}${testDataSuffix}.dat`, 'utf-8');
+    const global_test_phase_filename = `./data/day_${day}${testDataSuffix}.dat`;
+    if (!fs.existsSync(global_test_phase_filename)) {
+        throw new Error(`No data found for day ${day}`)
+    }
+    return fs.readFileSync(global_test_phase_filename, 'utf-8');
 }
 
 export function getData(day: number, test: Type, part: Part): string[] {

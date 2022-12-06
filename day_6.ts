@@ -20,8 +20,6 @@ function solve(lines: string[], part: Part): void {
             break;
         }
     }
-
-
 }
 
 run(6, [Type.TEST, Type.RUN], solve, [Part.PART_1, Part.PART_2]);
