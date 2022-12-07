@@ -11,34 +11,49 @@ export enum Part {
     PART_2 = "PART 2"
 }
 
-export function getRawData(day: number, test: Type,  part: Part): string {
-    const testDataSuffix = test === Type.TEST ? "_test" : "";
+export function getRawData(day: number, type: Type, part: Part, logger: Logger): string {
+    const testDataSuffix = type === Type.TEST ? "_test" : "";
     const current_test_phase_filename = `./data/day_${day}_${part === Part.PART_2 ? 2 : 1}${testDataSuffix}.dat`
     if (fs.existsSync(current_test_phase_filename)) {
         return fs.readFileSync(current_test_phase_filename, 'utf-8');
     }
     const global_test_phase_filename = `./data/day_${day}${testDataSuffix}.dat`;
     if (!fs.existsSync(global_test_phase_filename)) {
+        logger.error("No data file found");
         throw new Error(`No data found for day ${day}`)
     }
     return fs.readFileSync(global_test_phase_filename, 'utf-8');
 }
 
-export function getData(day: number, test: Type, part: Part): string[] {
-    return getRawData(day, test, part).split(/\r?\n/);
+export function getData(day: number, type: Type, part: Part, logger: Logger): string[] {
+    return getRawData(day, type, part, logger).split(/\r?\n/);
 }
 
-export function run(day: number, types: Type[], fct: (lines: string[], part: Part) => void, parts: Part[] = [Part.ALL]): void {
-    console.log(`[RUNNING] Day ${day}`)
+export interface Logger {
+    debug(message: string): void,
+    log(message: string): void,
+    error(message: string): void,
+    result(value: any): void,
+}
+
+export function run(day: number, types: Type[], fct: (lines: string[], part: Part, type: Type, logger: Logger) => void, parts: Part[] = [Part.ALL], debug: boolean = false): void {
+    console.log(`[RUNNING] Day ${day}`);
     parts.forEach(part => {
         types.forEach(type => {
+            const logger: Logger = {
+                debug: debug ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
+                log: (message: string) => console.log(`[${name}][${part}] ${message}`),
+                error: (message: string) => console.error(`[${name}][${part}] ${message}`),
+                result: (value: any) => console.log(`[${name}][${part}] RESULT ====> ${value} <====`)
+            }
+
             const name = Type[type];
-            console.log(`[${name}][${part}] Running`)
+            logger.log("Running")
             const start = new Date()
-        
-            fct(getData(day, type, part), part)
+
+            fct(getData(day, type, part, logger), part, type, logger)
             const duration = (new Date()).getTime() - start.getTime()
-            console.log(`[${name}][${part}] Done in ${duration} ms`)
+            logger.log(`Done in ${duration} ms`)
         })
     })
 }

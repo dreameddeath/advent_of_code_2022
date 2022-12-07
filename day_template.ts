@@ -1,21 +1,20 @@
 import * as Utils from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 
 function parse(lines: string[]): string[] {
     return lines;
 }
 
 
-function puzzle(lines: string[], part: Part): void {
-    const data=parse(lines);
+function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
+    const data = parse(lines);
     if (part === Part.PART_1) {
         const result = data.length;
-        console.log(`Result: ${result}`)
-
+        logger.result(result)
     }
     else {
         const result = data.length;
-        console.log(`Result: ${result}`);
+        logger.result(result)
     }
 }
 

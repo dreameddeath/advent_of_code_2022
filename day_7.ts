@@ -1,7 +1,6 @@
 import * as Utils from "./utils";
-import { Part, run, Type } from "./day_utils"
-import { id } from "date-fns/locale";
-import { string } from "yargs";
+import { Logger, Part, run, Type } from "./day_utils"
+import { buildVisitor } from "./treeUtils";
 
 enum CmdType {
     cd = "cd",
@@ -23,6 +22,7 @@ interface Content {
 
 interface Tree {
     name: string,
+    maxDepth: number,
     parent?: Tree,
     totalSize: number,
     currSize: number,
@@ -53,15 +53,34 @@ function parse(lines: string[]): (Command | Content)[] {
     });
 }
 
+const visitor = buildVisitor<Tree>(t => t.parent, (t) => Object.values(t.subDirs));
+
 function initTree(name: string, parent?: Tree): Tree {
-    return {
+    if (parent !== undefined && parent.subDirs[name] !== undefined) {
+        return parent.subDirs[name];
+    }
+    const newElement = {
         name: name,
         parent: parent,
+        maxDepth: 0,
         files: {},
         subDirs: {},
         currSize: 0,
         totalSize: 0
+    };
+
+    if (parent !== undefined) {
+        parent.subDirs[name] = newElement;
+        visitor.applyParent(parent, (curr, maxDepthChild) => {
+            if (curr.maxDepth > maxDepthChild + 1) {
+                return [false, curr.maxDepth];
+            } else {
+                curr.maxDepth = maxDepthChild + 1;
+                return [true, curr.maxDepth];
+            }
+        }, 0);
     }
+    return newElement;
 }
 
 function moveDir(curr: Tree, name: string): Tree {
@@ -77,10 +96,7 @@ function moveDir(curr: Tree, name: string): Tree {
         }
         return curr.parent;
     } else {
-        if (curr.subDirs[name] === undefined) {
-            curr.subDirs[name] = initTree(name, curr)
-        }
-        return curr.subDirs[name];
+        return initTree(name, curr);
     }
 }
 
@@ -90,10 +106,10 @@ function addFileIfNeeded(curr: Tree, name: string, size: number): Tree {
     }
     curr.files[name] = size;
     curr.currSize += size;
-    let dirToIncTotal: Tree | undefined = curr;
-    do {
-        dirToIncTotal.totalSize += size;
-    } while ((dirToIncTotal = dirToIncTotal.parent) !== undefined);
+    visitor.applyParent(curr, (tree, sizeToAdd) => {
+        tree.totalSize += sizeToAdd;
+        return [true, sizeToAdd];
+    }, size);
     return curr;
 }
 
@@ -106,32 +122,33 @@ function apply(curr: Tree, line: Content | Command): Tree {
     return curr;
 }
 
-function visit<T>(tree: Tree, v: T, fct: (v: T, t: Tree) => [boolean, T]): T {
-    let [cont, result] = fct(v, tree);
-    if (!cont) {
-        return result;
-    }
-    for (const subDirName in tree.subDirs) {
-        result = visit(tree.subDirs[subDirName], result, fct);
-    }
-    return result;
+function display(tree: Tree, logger: Logger) {
+    const indentation_part = "  ";
+    visitor.visit(tree, undefined, (item, v, parents) => {
+        const prefix = indentation_part.repeat(parents.length);
+        logger.debug(`${prefix}dir ${item.name}`);
+        Object.entries(item.files).forEach(([name, size]) =>
+            logger.debug(`${prefix}${indentation_part}file ${name} ${size}`)
+        );
+        return [true, v];
+    })
 }
 
-function puzzle(lines: string[], part: Part): void {
+
+function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
-    const root = initTree("/")
-    const _lastSubDir = data.reduce((tree, cmd) => apply(tree, cmd), root);
+    const root = visitor.toRoot(data.reduce((tree, cmd) => apply(tree, cmd), initTree("/")));
     if (part === Part.PART_1) {
-        const maxSize = 100000
-        const result = Object.values(root.subDirs).map(child => visit(child, 0, (count, tree) => {
+        const maxSize = 100000;
+        if (type == Type.TEST) display(root, logger);
+        const result = Object.values(root.subDirs).map(child => visitor.visit(child, 0, (tree, sum) => {
             if (tree.totalSize > maxSize) {
-                return [true, count];
+                return [true, sum];
             } else {
-                return [true, count + tree.totalSize];
+                return [true, sum + tree.totalSize];
             }
         })).reduce((a, b) => a + b)
-        console.log(`Result: ${result}`)
-
+        logger.result(result)
     }
     else {
         const totalSizeAvailable = 70000000;
@@ -139,7 +156,7 @@ function puzzle(lines: string[], part: Part): void {
         const currFreeSpace = totalSizeAvailable - root.totalSize;
         const sizeToRemove = minFreeSpace - currFreeSpace;
 
-        const result = visit(root, [] as Tree[], (list, tree) => {
+        const result = visitor.visit(root, [] as Tree[], (tree, list) => {
             if (tree.totalSize >= sizeToRemove) {
                 return [true, [tree, ...list]];
             } else {
@@ -147,7 +164,7 @@ function puzzle(lines: string[], part: Part): void {
             }
         });
         result.sort((t1, t2) => t1.totalSize - t2.totalSize);
-        console.log(`Result: ${result[0].totalSize}`);
+        logger.result(result[0].totalSize);
     }
 }
 
