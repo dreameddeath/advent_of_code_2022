@@ -14,7 +14,6 @@ export class PriorityQueue<T>{
     private readonly queue: QueueCostSlot<T>[] = [];
     private readonly existingItems: Map<string, number> = new Map()
     constructor(private getCost: (i: T) => number, private readonly keep_processed_key: boolean = false) {
-
     }
 
     public put(inputItem: T, key: string | undefined = undefined): number | undefined {

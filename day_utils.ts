@@ -1,4 +1,6 @@
 import * as fs from 'fs';
+import { ExtendsMap } from 'mapUtils';
+import { string } from 'yargs';
 
 export enum Type {
     TEST,
@@ -36,6 +38,13 @@ export interface Logger {
     result<T>(value: T, testResult?: T | [T, T]): void,
 }
 
+const emptyLogger: Logger = {
+    debug: () => { },
+    log: () => { },
+    error: () => { },
+    result: () => { }
+}
+
 function calcSuccessMessage<T>(type: Type, value: T, expectedResult: T | [T, T] | undefined): "OK" | "KO" | "" {
     if (expectedResult === undefined) {
         return "";
@@ -50,33 +59,55 @@ function calcSuccessMessage<T>(type: Type, value: T, expectedResult: T | [T, T] 
     }
 }
 
-export function run(day: number, types: Type[], fct: (lines: string[], part: Part, type: Type, logger: Logger) => void, parts: Part[] = [Part.ALL], debug: boolean = false): void {
+export type Solver<BTAG> = (lines: string[], part: Part, type: Type, logger: Logger, benchTag?: BTAG) => void;
+
+export function doRun<BTAG>(fct: Solver<BTAG>, data: string[], part: Part, type: Type, logger: Logger, benchTag?: BTAG): number {
+    const start = new Date();
+    fct(data, part, type, logger, benchTag);
+    return (new Date()).getTime() - start.getTime();
+}
+
+export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: Part[] = [Part.ALL], opt?: { bench?: boolean, debug?: boolean, benchTags?: BTAG[] }): void {
     console.log(`[RUNNING] Day ${day}`);
     parts.forEach(part => {
         types.forEach(type => {
-            const logger: Logger = {
-                debug: debug ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
-                log: (message: string) => console.log(`[${name}][${part}] ${message}`),
-                error: (message: string) => console.error(`[${name}][${part}] ${message}`),
-                result: <T>(value: T, result?: T | [T, T]) => {
-                    const result_value = calcSuccessMessage(type, value, result);
-                    const finalMessage = `[${name}][${part}] RESULT ${result_value} ====>${value}<====`
-                    if (result_value === "KO") {
-                        console.error(finalMessage);
-                    } else {
-                        console.log(finalMessage)
-                    }
+            const logger: Logger = buildLogger(opt?.bench, part, type)
 
-                }
-            }
-
-            const name = Type[type];
             logger.log("Running")
-            const start = new Date()
-
-            fct(getData(day, type, part, logger), part, type, logger)
-            const duration = (new Date()).getTime() - start.getTime()
-            logger.log(`Done in ${duration} ms`)
+            const data = getData(day, type, part, logger);
+            if (opt?.bench) {
+                for (const benchTag of opt?.benchTags ?? [undefined]) {
+                    const benchedResult = [];
+                    for (let count = 0; count < 10; count++) {
+                        benchedResult.push(doRun(fct, data, part, type, emptyLogger, benchTag));
+                    }
+                    const duration = benchedResult.reduce((a, b) => a + b) / benchedResult.length;
+                    const benchTypeLabel = benchTag ?? "";
+                    logger.log(`Bench ${benchTypeLabel} Done in agv ${duration} ms`)
+                }
+            } else {
+                const duration = doRun(fct, data, part, type, logger);
+                logger.log(`Done in ${duration} ms`)
+            }
         })
     })
+}
+
+function buildLogger(debugMode: boolean | undefined, part: Part, type: Type): Logger {
+    const name = Type[type];
+    return {
+        debug: debugMode ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
+        log: (message: string) => console.log(`[${name}][${part}] ${message}`),
+        error: (message: string) => console.error(`[${name}][${part}] ${message}`),
+        result: <T>(value: T, result?: T | [T, T]) => {
+            const result_value = calcSuccessMessage(type, value, result);
+            const finalMessage = `[${name}][${part}] RESULT ${result_value} ====>${value}<====`;
+            if (result_value === "KO") {
+                console.error(finalMessage);
+            } else {
+                console.log(finalMessage);
+            }
+
+        }
+    };
 }
