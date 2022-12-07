@@ -33,7 +33,21 @@ export interface Logger {
     debug(message: string): void,
     log(message: string): void,
     error(message: string): void,
-    result(value: any): void,
+    result<T>(value: T, testResult?: T | [T, T]): void,
+}
+
+function calcSuccessMessage<T>(type: Type, value: T, expectedResult: T | [T, T] | undefined): "OK" | "KO" | "" {
+    if (expectedResult === undefined) {
+        return "";
+    }
+    if (Array.isArray(expectedResult)) {
+        const expectedResultValue = type === Type.TEST ? expectedResult[0] : expectedResult[1];
+        return value === expectedResultValue ? "OK" : "KO";
+    } else if (type === Type.TEST) {
+        return value === expectedResult ? "OK" : "KO";
+    } else {
+        return "";
+    }
 }
 
 export function run(day: number, types: Type[], fct: (lines: string[], part: Part, type: Type, logger: Logger) => void, parts: Part[] = [Part.ALL], debug: boolean = false): void {
@@ -44,7 +58,16 @@ export function run(day: number, types: Type[], fct: (lines: string[], part: Par
                 debug: debug ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
                 log: (message: string) => console.log(`[${name}][${part}] ${message}`),
                 error: (message: string) => console.error(`[${name}][${part}] ${message}`),
-                result: (value: any) => console.log(`[${name}][${part}] RESULT ====> ${value} <====`)
+                result: <T>(value: T, result?: T | [T, T]) => {
+                    const result_value = calcSuccessMessage(type, value, result);
+                    const finalMessage = `[${name}][${part}] RESULT ${result_value} ====>${value}<====`
+                    if (result_value === "KO") {
+                        console.error(finalMessage);
+                    } else {
+                        console.log(finalMessage)
+                    }
+
+                }
             }
 
             const name = Type[type];

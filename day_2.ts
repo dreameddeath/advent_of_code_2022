@@ -1,5 +1,5 @@
 import { applyMapOnItem, forcePresent } from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 enum Play {
     ROCK = 1,
     PAPER = 2,
@@ -74,12 +74,12 @@ function parsePart2(lines: string[]): [Play, Result][] {
 }
 
 
-function puzzle(lines: string[], part: Part): void {
+function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     if (part === Part.PART_1) {
         const result = parsePart1(lines)
             .map(round => gain(round))
             .reduce((a, b) => a + b)
-        console.log(`Result ${result}`)
+        logger.result(result, [15, 11841])
     }
     else {
         const result = parsePart2(lines)
@@ -89,7 +89,7 @@ function puzzle(lines: string[], part: Part): void {
             ] as [Play, Play])
             .map(round => gain(round))
             .reduce((a, b) => a + b);
-        console.log(`Result ${result}`);
+        logger.result(result, [12, 13022]);
     }
 }
 

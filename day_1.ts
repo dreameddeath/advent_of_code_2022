@@ -1,12 +1,12 @@
 import { genericSort, reduceList, reverseSort } from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 
 function parse(lines: string[]): (number | undefined)[] {
     return lines.map(line => line === "" ? undefined : parseInt(line, 10));
 }
 
 
-function puzzle(lines: string[], part: Part): void {
+function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines).reduce(
         reduceList(
             (list: number[], newValue) => (newValue === undefined) ? list.push(0) : list[list.length - 1] += newValue
@@ -17,12 +17,12 @@ function puzzle(lines: string[], part: Part): void {
     data.sort(reverseSort(genericSort()));
     if (part === Part.PART_1) {
         const result = data[0]
-        console.log(`Best: ${result}`)
+        logger.result(result, [24000, 74394])
 
     }
     else {
         const result = data[0] + data[1] + data[2];
-        console.log(`Best 3: ${result}`);
+        logger.result(result, [45000, 212836]);
     }
 }
 

@@ -10,11 +10,11 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
     if (part === Part.PART_1) {
         const result = data.length;
-        logger.result(result)
+        logger.result(result, [undefined, undefined])
     }
     else {
         const result = data.length;
-        logger.result(result)
+        logger.result(result, [undefined, undefined])
     }
 }
 

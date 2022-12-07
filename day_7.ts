@@ -148,7 +148,7 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
                 return [true, sum + tree.totalSize];
             }
         })).reduce((a, b) => a + b)
-        logger.result(result)
+        logger.result(result, [95437, 1513699])
     }
     else {
         const totalSizeAvailable = 70000000;
@@ -164,7 +164,7 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
             }
         });
         result.sort((t1, t2) => t1.totalSize - t2.totalSize);
-        logger.result(result[0].totalSize);
+        logger.result(result[0].totalSize, [24933642, 7991939]);
     }
 }
 

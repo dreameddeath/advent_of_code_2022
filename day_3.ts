@@ -1,15 +1,14 @@
 import { packStrict } from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 
 function parse(lines: string[]): string[] {
     return lines;
 }
 
 function commonChar(first: string, second: string): string {
-    const result = [...first].sort()
-        .filter((v, index, all) => index === 0 || all[index - 1] !== v)
-        .filter(char => second.indexOf(char) >= 0);
-    return result.join("");
+    return [...first]
+        .filter(char => second.indexOf(char) >= 0)
+        .join("");
 }
 const [a, z] = ["a".charCodeAt(0), "z".charCodeAt(0)];
 const [A, Z] = ["A".charCodeAt(0), "Z".charCodeAt(0)];
@@ -23,7 +22,7 @@ function priority(char: string): number {
 
 
 
-function puzzle(lines: string[], part: Part): void {
+function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
     if (part === Part.PART_1) {
         const result = data
@@ -32,16 +31,13 @@ function puzzle(lines: string[], part: Part): void {
                 rumstack.substring(rumstack.length / 2)
             ])
             .map(([left, right]) => commonChar(left, right)).map(priority).reduce((a, b) => a + b)
-        console.log(`Result ${result}`)
+        logger.result(result, [157, 8123])
     }
     else {
         const result = data.reduce(packStrict(3), [])
-            .map(
-                ([line1, line2, line3]) => commonChar(commonChar(line1, line2), line3)
-            )
-
+            .map(([line1, line2, line3]) => commonChar(commonChar(line1, line2), line3))
             .flatMap(priority).reduce((a, b) => a + b)
-        console.log(`Result ${result}`);
+        logger.result(result, [70, 2620])
     }
 }
 

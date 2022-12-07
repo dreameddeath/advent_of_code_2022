@@ -1,5 +1,5 @@
 import * as Utils from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 
 interface Range {
     x: number,
@@ -28,24 +28,24 @@ function parse(lines: string[]): Pair[] {
     });
 }
 
-function isFirstInside(a:Range,b:Range):boolean{
-    return a.x>=b.x && a.y<=b.y
+function isFirstInside(a: Range, b: Range): boolean {
+    return a.x >= b.x && a.y <= b.y
 }
 
-function isOverlapping(a:Range,b:Range):boolean{
-    return !(a.y<b.x || a.x>b.y)
+function isOverlapping(a: Range, b: Range): boolean {
+    return !(a.y < b.x || a.x > b.y)
 }
 
 
-function solve(lines: string[], part: Part): void {
+function solve(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
     if (part === Part.PART_1) {
-        const result = data.filter(pair=> isFirstInside(pair.range1,pair.range2)|| isFirstInside(pair.range2,pair.range1));
-        console.log(`Result ${result.length}`)
+        const result = data.filter(pair => isFirstInside(pair.range1, pair.range2) || isFirstInside(pair.range2, pair.range1));
+        logger.result(result.length, [2, 540])
     }
     else {
-        const result = data.filter(pair=> isOverlapping(pair.range1,pair.range2));
-        console.log(`Result ${result.length}`);
+        const result = data.filter(pair => isOverlapping(pair.range1, pair.range2));
+        logger.result(result.length, [4, 872]);
     }
 }
 

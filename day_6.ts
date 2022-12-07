@@ -1,12 +1,12 @@
 import * as Utils from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 import { FrequencyMap } from "./frequencyMap";
 
 function parse(lines: string[]): string[] {
     return lines[0].split("");
 }
 
-function solve(lines: string[], part: Part): void {
+function solve(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
     const nbDistinct = part === Part.PART_1 ? 4 : 14;
     const frequencyMap = new FrequencyMap<string>();
@@ -16,7 +16,7 @@ function solve(lines: string[], part: Part): void {
         }
         frequencyMap.add(data[pos]);
         if (frequencyMap.getDistinctItemsCount() === nbDistinct) {
-            console.log(`Result ${pos+1}`);
+            logger.result(pos + 1, part === Part.PART_1 ? [7, 1300] : [19, 3986]);
             break;
         }
     }

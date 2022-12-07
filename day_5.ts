@@ -1,5 +1,5 @@
 import * as Utils from "./utils";
-import { Part, run, Type } from "./day_utils"
+import { Logger, Part, run, Type } from "./day_utils"
 
 type Crate = string
 type WareHouse = Crate[][];
@@ -59,15 +59,15 @@ function applyInstructions(warehouse: WareHouse, instructions: Instruction[], re
     return warehouse.map(stack => stack.pop()).join("");
 }
 
-function solve(lines: string[], part: Part): void {
+function solve(lines: string[], part: Part, type: Type, logger: Logger): void {
     const [warehouse, instructions] = parse(lines);
     if (part === Part.PART_1) {
         const result = applyInstructions(warehouse, instructions, true);
-        console.log(`Result ${result}`)
+        logger.result(result, ["CMZ", "PTWLTDSJV"]);
     }
     else {
         const result = applyInstructions(warehouse, instructions, false);
-        console.log(`Result ${result}`);
+        logger.result(result, ["MCD", "WZMFVGGZP"]);
     }
 }
 
