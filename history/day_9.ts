@@ -1,6 +1,6 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
-import { ExtendsMap } from "./mapUtils";
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
+import { ExtendsMap } from "../mapUtils";
 
 type Direction = "L" | "U" | "D" | "R";
 const allDirections: Direction[] = ["L", "U", "R", "D"];

@@ -1,5 +1,5 @@
-import { genericSort, reduceList, reverseSort } from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
+import { genericSort, reduceList, reverseSort } from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
 
 function parse(lines: string[]): (number | undefined)[] {
     return lines.map(line => line === "" ? undefined : parseInt(line, 10));
