@@ -19,12 +19,12 @@ export function reduceList<RES, T>(fct: (groups: RES[], item: T, index: number, 
 }
 
 
-export function packIf<T, RES extends T[] = T[]>(condition: (groups: RES[], item: T, index: number, orig: T[]) => boolean | GroupImpact): (groups: RES[], item: T, index: number, orig: T[]) => RES[] {
+export function packIf<T, RES extends T[] = T[]>(condition: (item: T, index: number, groups: RES[], orig: T[]) => boolean | GroupImpact): (groups: RES[], item: T, index: number, orig: T[]) => RES[] {
     const rule: (groups: RES[], item: T, index: number, orig: T[]) => GroupImpact = (groups, item, index, orig) => {
         if (index === 0) {
             return GroupImpact.CHANGE;
         }
-        const res = condition(groups, item, index, orig);
+        const res = condition(item, index, groups, orig);
         if (typeof res === "boolean") {
             return res ? GroupImpact.CHANGE : GroupImpact.APPEND;
         }
@@ -42,7 +42,7 @@ export function packIf<T, RES extends T[] = T[]>(condition: (groups: RES[], item
 
 
 export function pack<T>(size: number): (groups: T[][], item: T, index: number, orig: T[]) => T[][] {
-    return reduceList(packIf((_groups, _item, index) => index === 0 || index % size === 0));
+    return reduceList(packIf((_item, index, _groups) => index === 0 || index % size === 0));
 }
 type BuildAry<T, Res extends unknown[] = []> = T extends Res["length"]
     ? Res
@@ -54,7 +54,7 @@ type AddOne<T extends number> = BuildAry<T> extends [...infer Rest]
 type StrictArray<T, S extends number, POS extends number = 0, RES extends T[] = []> = POS extends S ? [...RES] : StrictArray<T, S, AddOne<POS>, [...RES, T]>;
 
 export function packStrict<T, S extends number>(size: S): (groups: StrictArray<T, S>[], item: T, index: number, orig: T[]) => StrictArray<T, S>[] {
-    return reduceList(packIf<T, StrictArray<T, S>>((_groups, _item, index, orig) => {
+    return reduceList(packIf<T, StrictArray<T, S>>((_item, index, _groups, orig) => {
         if (index === 0 && orig.length % size !== 0) {
             throw new Error("Array size is not correct <" + orig.length + "/" + size + ">")
         }
@@ -62,9 +62,14 @@ export function packStrict<T, S extends number>(size: S): (groups: StrictArray<T
     }))
 }
 
-export function genericSort<T extends number | string | any[]>(): (a: T, b: T) => number {
-    return (a: T, b: T) => {
-        if (typeof a === "number") return a - (b as number);
+
+export function genericSort<T extends bigint | number | string | any[], U = T>(map?: (i: U) => T): (a: U, b: U) => number {
+    const realMap = map !== undefined ? map : ((i: U) => i as any as T);
+    return (aBefore: U, bBefore: U) => {
+        const a = realMap(aBefore);
+        const b = realMap(bBefore);
+        if (typeof a === "bigint") return (a < b) ? -1 : ((a > b) ? 1 : 0)
+        else if (typeof a === "number") return a - (b as number);
         else if (typeof a === "string") return a.localeCompare((b as string))
         else return a.length - (b as any).length;
     }
@@ -88,21 +93,21 @@ export function applyMap<I, T>(map: T): (item: I, index: number, orig: I[]) => T
 
 export function applyMapOnItem<I, T>(item: I, map: T, failure: () => void = () => { }): T[keyof T] {
     const result = map[item as keyof T];
-    if (result === undefined) { 
-        failure(); 
+    if (result === undefined) {
+        failure();
         throw new Error(`Cannot map item ${item}`);
     }
     return result;
 }
 
-export function forcePresent<I>(input: I):NonNullable<I> {
+export function forcePresent<I>(input: I): NonNullable<I> {
     if (input === undefined || input === null) {
         throw new Error("Empty item");
     }
     return input as NonNullable<I>;
 }
 
-export function forceType<O>(input: any,fct:(i:any)=>boolean):input is O {
+export function forceType<O>(input: any, fct: (i: any) => boolean): input is O {
     if (input === undefined || input === null) {
         return false;
     }
