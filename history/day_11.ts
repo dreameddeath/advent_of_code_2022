@@ -1,5 +1,5 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
 
 interface Monkey {
     nbProcessedItems: number,
@@ -45,24 +45,23 @@ function parse(lines: string[]): Monkey[] {
 
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
-    const data = parse(lines);
+    const startMonkeys = parse(lines);
     const nbLoop = (part === Part.PART_1) ? 20 : 10000;
-    const mergedModulus = data.map(m => m.condModulus).reduce((a, b) => a * b);
-    const finalMonkeys = [...Utils.generator(nbLoop)].reduce((monkeys) => {
-        const newMonkeys = monkeys.map((monkey) => {
+    const mergedModulus = startMonkeys.map(m => m.condModulus).reduce((a, b) => a * b);
+    const finalMonkeys = [...Utils.generator(nbLoop)].reduce(monkeys => {
+        return monkeys.map(monkey => {
             const items = monkey.items;
             monkey.items = [];
             items.forEach(item => {
                 monkey.nbProcessedItems++;
                 const monkeyProcessing = monkey.operation(item);
-                const newWorryLevel = ((part === Part.PART_1) ? Math.floor(monkeyProcessing / 3) : monkeyProcessing)%mergedModulus;
+                const newWorryLevel = ((part === Part.PART_1) ? Math.floor(monkeyProcessing / 3) : monkeyProcessing) % mergedModulus;
                 const targetMonkey = monkey.test(newWorryLevel);
                 monkeys[targetMonkey].items.push(newWorryLevel);
             })
             return monkey;
         });
-        return newMonkeys;
-    }, data);
+    }, startMonkeys);
     finalMonkeys.sort(Utils.reverseSort(Utils.genericSort((a) => a.nbProcessedItems)));
     if (part === Part.PART_1) {
         logger.result(finalMonkeys[0].nbProcessedItems * finalMonkeys[1].nbProcessedItems, [10605, 117640])
