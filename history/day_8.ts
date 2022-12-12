@@ -1,6 +1,6 @@
 import * as Utils from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
-import { ExtendsMap } from "../mapUtils";
+import { ExtendedMap } from "../mapUtils";
 
 
 
@@ -52,7 +52,7 @@ function getInit(mapData: MapData): number[] {
     return [..."0".repeat(mapData.size)].map(c => -1);
 }
 
-type VisibilityMap = ExtendsMap<string, boolean>;
+type VisibilityMap = ExtendedMap<string, boolean>;
 
 function calcVisibility(mapData: MapData, distance: number, dir: Direction, currMax: number[], res: VisibilityMap) {
     for (let pos = 0; pos < mapData.size; ++pos) {
@@ -115,7 +115,7 @@ function calcScenicRange(mapData: MapData, coord: Coord, fcts: MoveNextMap): num
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
     if (part === Part.PART_1) {
-        const mapVisible: VisibilityMap = new ExtendsMap<string, boolean>();
+        const mapVisible: VisibilityMap = new ExtendedMap<string, boolean>();
         allDirections.forEach(
             dir => calcVisibilityDirection(data, dir, mapVisible)
         )

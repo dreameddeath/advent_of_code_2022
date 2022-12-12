@@ -51,24 +51,18 @@ interface Pos {
 }
 
 
-function findPath(map: Map): number {
-    const startPos: Pos = {
-        curr: map.start,
-        nbSteps: 0,
-        height: 'a'
-    }
-
+function findPathGeneric(map: Map, start: Pos, isEndReached: (pos: Pos) => boolean, isNextNodeValid: (curr: Pos, nextHeight: string) => boolean): number {
     const queue = new PriorityQueue<Pos>((p) => p.nbSteps, true);
     const key = (p: Pos) => `${p.curr.x}|${p.curr.y}`;
     const insert = (p: Pos) => { queue.put(p, `${key(p)}`) };
 
-    insert(startPos);
+    insert(start);
     while (queue.isNotEmpty()) {
         const nextNode = queue.pop();
         if (nextNode === undefined) {
             throw new Error("Shouldn't occurs");
         }
-        if (nextNode.item.curr.x === map.end.x && nextNode.item.curr.y === map.end.y) {
+        if (isEndReached(nextNode.item)) {
             return nextNode.item.nbSteps;
         }
         for (const direction of allDirections) {
@@ -77,8 +71,7 @@ function findPath(map: Map): number {
                 continue;
             }
             const nextHeight = map.heights.charAt(nextCoord.y * map.width + nextCoord.x);
-            const diffHeight = nextHeight.charCodeAt(0) - nextNode.item.height.charCodeAt(0);
-            if (diffHeight <= 1) {
+            if (isNextNodeValid(nextNode.item, nextHeight)) {
                 insert({
                     curr: nextCoord,
                     height: nextHeight,
@@ -93,30 +86,30 @@ function findPath(map: Map): number {
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
+    const fctEnding = (part === Part.PART_1)?
+        ((item:Pos) => item.curr.x == data.start.x && item.curr.y == data.start.y) :
+        ((item:Pos)=>item.height==='a');
+    const result = findPathGeneric(
+        data,
+        {
+            curr: data.end,
+            nbSteps: 0,
+            height: 'z'
+        },
+        fctEnding,
+        (curr, nextHeight) => {
+            const nextNum = nextHeight.charCodeAt(0);
+            const currNum = curr.height.charCodeAt(0);
+            return nextNum >= currNum - 1;
+        }
+        );
+
+
     if (part === Part.PART_1) {
-        const result = findPath(data);
         logger.result(result, [31, 528])
     }
     else {
-        const results: number[] = []
-        for (const [index, char] of [...data.heights].entries()) {
-            if (char === "a") {
-                try {
-                    results.push(findPath({
-                        heights: data.heights,
-                        start: { x: index % data.width, y: Math.floor(index / data.width) },
-                        end: data.end,
-                        height: data.height,
-                        width: data.width
-                    }))
-                } catch (e) {
-                    //ignore
-                }
-            }
-        }
-
-        results.sort(Utils.genericSort(a => a));
-        logger.result(results[0], [29, 522])
+        logger.result(result, [29, 522])
     }
 }
 

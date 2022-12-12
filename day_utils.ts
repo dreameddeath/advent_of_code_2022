@@ -1,6 +1,4 @@
 import * as fs from 'fs';
-import { ExtendsMap } from 'mapUtils';
-import { string } from 'yargs';
 
 export enum Type {
     TEST,

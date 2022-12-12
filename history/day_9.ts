@@ -1,6 +1,6 @@
 import * as Utils from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
-import { ExtendsMap } from "../mapUtils";
+import { ExtendedMap } from "../mapUtils";
 
 type Direction = "L" | "U" | "D" | "R";
 const allDirections: Direction[] = ["L", "U", "R", "D"];
@@ -10,7 +10,7 @@ type Command = { dir: Direction, count: number }
 
 type Rope = Coord[]
 
-type VisitedMap = ExtendsMap<string, boolean>;
+type VisitedMap = ExtendedMap<string, boolean>;
 function parse(lines: string[]): Command[] {
     return lines.map(line => {
         const parsed = Utils.forcePresent(line.match(/(\w) (\d+)/));
@@ -73,7 +73,7 @@ function applyDirection(startRope: Rope, dir: Direction, startCount: number, vis
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
-    const mapVisited: VisitedMap = new ExtendsMap();
+    const mapVisited: VisitedMap = new ExtendedMap();
     const startPos = { x: 0, y: 0 };
     const nbKnots = (part === Part.PART_1) ? 2 : 10;
     const startRope: Rope = [...("0".repeat(nbKnots))].map(_ => startPos);
