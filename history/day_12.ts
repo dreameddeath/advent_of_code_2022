@@ -1,6 +1,6 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
-import { PriorityQueue } from "./priority_queue";
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
+import { PriorityQueue } from "../priority_queue";
 
 interface Coord {
     x: number,

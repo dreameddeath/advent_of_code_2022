@@ -1,4 +1,7 @@
-use std::{collections::{BinaryHeap, HashSet}, fmt};
+use std::{
+    collections::{BinaryHeap, HashMap},
+    fmt,
+};
 
 use crate::utils::Part;
 
@@ -56,7 +59,7 @@ fn parse(lines: &Vec<String>) -> MapWorld {
     };
 }
 
-#[derive(Eq,PartialEq,Debug)]
+#[derive(Eq, PartialEq, Debug)]
 struct Node<'a> {
     x: u16,
     y: u16,
@@ -64,9 +67,13 @@ struct Node<'a> {
     nb_step: u16,
 }
 
-impl<'a> fmt::Display for Node<'a>{
+impl<'a> fmt::Display for Node<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(x:{}, y:{}, h:{}, s:{})", self.x, self.y,self.map_item.height, self.nb_step)
+        write!(
+            f,
+            "(x:{}, y:{}, h:{}, s:{})",
+            self.x, self.y, self.map_item.height, self.nb_step
+        )
     }
 }
 
@@ -118,7 +125,7 @@ fn get_next_pos<'a>(map: &'a MapWorld, curr: &Node, direction: &Direction) -> Op
         .items
         .get(new_y as usize)
         .and_then(|line| line.get(new_x as usize))
-        .filter(|item| item.height <= curr.map_item.height + 1)
+        .filter(|next_item| next_item.height + 1 >= curr.map_item.height)
         .map(|item| Node {
             x: new_x as u16,
             y: new_y as u16,
@@ -131,65 +138,70 @@ fn key(node: &Node) -> u16 {
     return ((node.y as u16) << 8) | node.x as u16;
 }
 
-fn find_path(map: &MapWorld, start_pos: Node) -> Option<u16> {
-    let mut processed: HashSet<u16,&Node> = HashSet::new();
+fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P) -> Option<u16> {
+    //let mut processed: HashMap<u16,u16> = HashMap::new();
+    let mut best_inserted: HashMap<u16, u16> = HashMap::new();
     let mut priority_queue: BinaryHeap<Node> = BinaryHeap::new();
     priority_queue.push(start_pos);
     while let Some(next) = priority_queue.pop() {
-        //println!("Proccessing {}",next);
-        if next.map_item.item_type == Type::END {
+        if is_end(&next.map_item) {
             return Option::Some(next.nb_step);
         }
 
         for dir in Direction::VALUES.iter() {
             if let Some(to_explore) = get_next_pos(&map, &next, dir) {
-                if !processed.contains(&key(&to_explore)) {
-                    //println!("queuing {}",to_explore);
-                    priority_queue.push(to_explore)
+                let key = key(&to_explore);
+                if best_inserted
+                    .get(&key)
+                    .filter(|step| **step <= to_explore.nb_step)
+                    .is_none()
+                {
+                    best_inserted.insert(key, to_explore.nb_step);
+                    priority_queue.push(to_explore);
                 }
             }
         }
-        processed.insert(key(&next));
     }
     return Option::None;
 }
 
-fn build_all_start<'a, P: Fn(&'a MapItem) -> bool>(map: &'a MapWorld, p: &'a P) -> Vec<Node<'a>> {
-    map.items
-        .iter()
-        .enumerate()
-        .flat_map(|(y, line)| {
-            line.iter()
-                .enumerate()
-                .filter(|(_, item)| p(*item))
-                .map(move |(x, item)| Node {
-                    map_item: item,
-                    x: x as u16,
-                    y: y as u16,
-                    nb_step: 0,
-                })
-        })
-        .collect()
+fn build_start<'a, P: Fn(&'a MapItem) -> bool>(map: &'a MapWorld, p: &'a P) -> Option<Node<'a>> {
+    map.items.iter().enumerate().find_map(|(y, line)| {
+        line.iter()
+            .enumerate()
+            .find(|(_, item)| p(*item))
+            .map(move |(x, item)| Node {
+                map_item: item,
+                x: x as u16,
+                y: y as u16,
+                nb_step: 0,
+            })
+    })
 }
+
+const DEBUG:bool = true;
 
 pub fn puzzle(part: &Part, lines: &Vec<String>) {
     let map = parse(lines);
 
     match part {
         Part::Part1 => {
-            let results: Vec<u16> = build_all_start(&map, &(|item| item.item_type == Type::START))
-                .into_iter()
-                .filter_map(|start| find_path(&map, start))
-                .collect();
-            println!("Result {}", results[0])
+            let result = build_start(&map, &(|item| item.item_type == Type::END))
+                .and_then(|start| {
+                    find_path(&map, start, |item: &MapItem| item.item_type == Type::START)
+                })
+                .unwrap();
+            if DEBUG {
+                println!("Result {}", result)
+            }
         }
         Part::Part2 => {
-            /*let mut results: Vec<u16> = build_all_start(&map, &(|item| item.height == 0))
-                .into_iter()
-                .filter_map(|start| find_path(&map, start))
-                .collect();
-            results.sort();
-            println!("Result {}", results[0])*/
+            let result = build_start(&map, &(|item| item.item_type == Type::END))
+                .and_then(|start| find_path(&map, start, |item| item.height == 0))
+                .unwrap();
+            if DEBUG {
+                println!("Result {}", result)
+            }
         }
     }
 }

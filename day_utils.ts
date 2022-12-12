@@ -81,7 +81,7 @@ export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: 
                     }
                     const duration = benchedResult.reduce((a, b) => a + b) / benchedResult.length;
                     const benchTypeLabel = benchTag ?? "";
-                    logger.log(`Bench ${benchTypeLabel} Done in agv ${duration} ms`)
+                    logger.log(`Bench ${benchTypeLabel} done in agv ${duration} ms`)
                 }
             } else {
                 const duration = doRun(fct, data, part, type, logger);

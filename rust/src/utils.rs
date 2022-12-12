@@ -11,13 +11,13 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
-fn get_applicable_filename(day: &u8, part: &Part, is_test: &Dataset) ->String{
+fn get_applicable_filename(day: &u8, part: &Part, is_test: &Dataset) -> String {
     let file_with_part = format!(
         "./data/day_{}_{}{}.txt",
         day,
         match part {
-            Part::Part1=>1,
-            Part::Part2=>2
+            Part::Part1 => 1,
+            Part::Part2 => 2,
         },
         match is_test {
             Dataset::Test => "_test",
@@ -25,22 +25,21 @@ fn get_applicable_filename(day: &u8, part: &Part, is_test: &Dataset) ->String{
         }
     );
     return if std::path::Path::new(file_with_part.as_str()).exists() {
-     file_with_part
-    }
-    else {
+        file_with_part
+    } else {
         format!(
-        "./data/day_{}{}.txt",
-        day,
-        match is_test {
-            Dataset::Test => "_test",
-            _ => "",
-        })
-    }
+            "./data/day_{}{}.txt",
+            day,
+            match is_test {
+                Dataset::Test => "_test",
+                _ => "",
+            }
+        )
+    };
 }
 
 pub fn read_lines(day: &u8, part: &Part, is_test: &Dataset) -> Option<Lines<BufReader<File>>> {
-
-    let f = read_lines_internal(get_applicable_filename(day,part,is_test));
+    let f = read_lines_internal(get_applicable_filename(day, part, is_test));
 
     return match f {
         Ok(lines) => Some(lines),
@@ -49,6 +48,12 @@ pub fn read_lines(day: &u8, part: &Part, is_test: &Dataset) -> Option<Lines<BufR
             None
         }
     };
+}
+
+#[derive(Eq, PartialEq)]
+pub enum Mode {
+    STANDARD,
+    BENCH,
 }
 
 #[derive(Debug)]
@@ -75,16 +80,25 @@ pub fn run<F: Fn(&Part, &Vec<String>)>(
     part: &Part,
     data_set: &Dataset,
     lines: &Vec<String>,
+    mode: &Mode,
 ) {
-    let start = Instant::now();
     println!("[Day {}][{:?}][{:?}] Starting ", day, part, data_set);
-    fct(part, lines);
+    let nb_max = if *mode == Mode::BENCH { 10 } else { 1 };
+    let start = Instant::now();
+    let mut count = 0;
+    while count < nb_max {
+        count += 1;
+        fct(part, lines);
+    }
+    let duration = start.elapsed().as_millis() as u64;
     println!(
-        "[Day {}][{:?}][{:?}] Duration {} ms ",
+        "[Day {}][{:?}][{:?}] Duration {} ms (avg {} for #{} iterations)",
         day,
         part,
         data_set,
-        start.elapsed().as_millis()
+        duration,
+        duration as f64 / nb_max as f64,
+        count
     )
 }
 
@@ -94,7 +108,7 @@ pub fn to_lines(day: &u8, part: &Part, data_set: &Dataset) -> Vec<String> {
         .unwrap_or(vec![]);
 }
 
-pub fn run_all<F: Fn(&Part, &Vec<String>)>(day: &u8, fct: &F, active: &Active) {
+pub fn run_all<F: Fn(&Part, &Vec<String>)>(day: &u8, fct: &F, active: &Active, mode: &Mode) {
     if let Active::False = active {
         return;
     }
@@ -103,13 +117,41 @@ pub fn run_all<F: Fn(&Part, &Vec<String>)>(day: &u8, fct: &F, active: &Active) {
     let test_lines_part2 = to_lines(day, &Part::Part2, &Dataset::Test);
     let real_lines_part1 = to_lines(day, &Part::Part1, &Dataset::Real);
     let real_lines_part2 = to_lines(day, &Part::Part2, &Dataset::Real);
-    run(day, fct, &Part::Part1, &Dataset::Test, &test_lines_part1);
+    run(
+        day,
+        fct,
+        &Part::Part1,
+        &Dataset::Test,
+        &test_lines_part1,
+        mode,
+    );
     println!("");
-    run(day, fct, &Part::Part1, &Dataset::Real, &real_lines_part1);
+    run(
+        day,
+        fct,
+        &Part::Part1,
+        &Dataset::Real,
+        &real_lines_part1,
+        mode,
+    );
     println!("");
-    run(day, fct, &Part::Part2, &Dataset::Test, &test_lines_part2);
+    run(
+        day,
+        fct,
+        &Part::Part2,
+        &Dataset::Test,
+        &test_lines_part2,
+        mode,
+    );
     println!("");
-    run(day, fct, &Part::Part2, &Dataset::Real, &real_lines_part2);
+    run(
+        day,
+        fct,
+        &Part::Part2,
+        &Dataset::Real,
+        &real_lines_part2,
+        mode,
+    );
 }
 
 #[allow(dead_code)]
