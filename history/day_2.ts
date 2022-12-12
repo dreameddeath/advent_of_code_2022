@@ -1,5 +1,5 @@
-import { applyMapOnItem, forcePresent } from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
+import { applyMapOnItem, forcePresent } from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
 enum Play {
     ROCK = 1,
     PAPER = 2,

@@ -1,5 +1,5 @@
-import { packStrict } from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
+import { packStrict } from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
 
 function parse(lines: string[]): string[] {
     return lines;

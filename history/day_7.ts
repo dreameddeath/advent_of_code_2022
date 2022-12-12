@@ -1,6 +1,6 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
-import { buildVisitor } from "./treeUtils";
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
+import { buildVisitor } from "../treeUtils";
 
 enum CmdType {
     cd = "cd",

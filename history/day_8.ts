@@ -1,7 +1,6 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
-import { ExtendsMap } from "./mapUtils";
-import { da } from "date-fns/locale";
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
+import { ExtendsMap } from "../mapUtils";
 
 
 

@@ -1,6 +1,6 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
-import { FrequencyMap } from "./frequencyMap";
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
+import { FrequencyMap } from "../frequencyMap";
 
 function parse(lines: string[]): string[] {
     return lines[0].split("");

@@ -1,5 +1,5 @@
-import * as Utils from "./utils";
-import { Logger, Part, run, Type } from "./day_utils"
+import * as Utils from "../utils";
+import { Logger, Part, run, Type } from "../day_utils"
 
 interface Range {
     x: number,
