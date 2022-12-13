@@ -1,4 +1,3 @@
-import { packStrict } from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
 
 function parse(lines: string[]): string[] {
@@ -34,7 +33,7 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
         logger.result(result, [157, 8123])
     }
     else {
-        const result = data.reduce(packStrict(3), [])
+        const result = data.packStrict(3)
             .map(([line1, line2, line3]) => commonChar(commonChar(line1, line2), line3))
             .flatMap(priority).reduce((a, b) => a + b)
         logger.result(result, [70, 2620])

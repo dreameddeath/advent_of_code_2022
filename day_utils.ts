@@ -1,3 +1,4 @@
+import "./utils";
 import * as fs from 'fs';
 
 export enum Type {

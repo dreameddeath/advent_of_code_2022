@@ -1,4 +1,3 @@
-import * as Utils from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
 
 const result_2_test = `

@@ -29,7 +29,7 @@ function parseTest(condition: string, ifTrue: string, ifFalse: string): [number,
 }
 
 function parse(lines: string[]): Monkey[] {
-    return lines.reduce(Utils.packIf((line) => line.trim() === "" ? Utils.GroupImpact.SKIP_AND_CHANGE : Utils.GroupImpact.APPEND), [])
+    return lines.pack(line => line.trim() === "", Utils.PackMatchAction.SKIP_AND_CHANGE)
         .map((monckeyData) => {
             const [condModulus, testCond] = parseTest(monckeyData[3], monckeyData[4], monckeyData[5]);
             return {

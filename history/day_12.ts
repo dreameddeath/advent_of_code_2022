@@ -1,4 +1,3 @@
-import * as Utils from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
 import { PriorityQueue } from "../priority_queue";
 

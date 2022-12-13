@@ -1,4 +1,3 @@
-import * as Utils from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
 import { ExtendedMap } from "../mapUtils";
 
@@ -81,7 +80,6 @@ function buildMoveNext(dir: Direction, size: number): MoveNextFct {
         case "right": return (c) => c.x + 1 >= size ? undefined : { x: c.x + 1, y: c.y };
         case "top": return (c) => c.y === 0 ? undefined : { x: c.x, y: c.y - 1 };
         case "bottom": return (c) => c.y + 1 >= size ? undefined : { x: c.x, y: c.y + 1 };
-
     }
 }
 
@@ -123,7 +121,6 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
         logger.result(result, [21, 1690])
     }
     else {
-        const result = data.heights.length;
         let max = 0;
         const fcts = buildMoveNextAll(data.size);
         for (let x = 0; x < data.size; ++x) {

@@ -147,7 +147,7 @@ fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P
         if is_end(&next.map_item) {
             return Option::Some(next.nb_step);
         }
-
+        
         for dir in Direction::VALUES.iter() {
             if let Some(to_explore) = get_next_pos(&map, &next, dir) {
                 let key = key(&to_explore);

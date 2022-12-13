@@ -1,3 +1,81 @@
+export { }
+
+export type BuildAry<T, Res extends unknown[] = []> = T extends Res["length"]
+    ? Res
+    : BuildAry<T, [...Res, unknown]>;
+export type AddOne<T extends number> = BuildAry<T> extends [...infer Rest]
+    ? [...Rest, 1]["length"]
+    : never;
+
+export type StrictArray<T, S extends number, POS extends number = 0, RES extends T[] = []> = POS extends S ? [...RES] : StrictArray<T, S, AddOne<POS>, [...RES, T]>;
+
+export enum PackMatchAction {
+    SKIP_AND_CHANGE,
+    APPEND_THEN_CHANGE,
+    CHANGE_THEN_APPEND
+}
+
+declare global {
+    interface Array<T> {
+        mapNonNull<U>(fct: (i: T, index: number, all: T[]) => U): Array<NonNullable<U>>;
+        pack(cond: (i: T, index: number, all: T[]) => boolean, whenMatch: PackMatchAction): Array<Array<T>>
+        packStrict<S extends number>(nb: S): StrictArray<T, S>[]
+    }
+}
+
+Array.prototype.mapNonNull = function <T, U>(fct: (i: T, index: number, all: T[]) => U) {
+    // code to remove "o"
+    return (this as T[]).map(fct)
+        .filter((v): v is NonNullable<typeof v> => !(v === null || v === undefined));
+}
+
+Array.prototype.packStrict = function <T, S extends number>(size: number) {
+    if (this.length % size !== 0) {
+        throw new Error("Cannot pack array because size " + this.length + " not coherent with pack size " + size);
+    }
+
+    return (this as T[]).reduce((groups, v, pos) => {
+        if (groups.length === 0 || pos % size === 0) {
+            groups.push([v] as StrictArray<T, S>);
+        } else {
+            (groups[groups.length - 1] as T[]).push(v);
+        }
+        return groups;
+    }, [] as StrictArray<T, S>[]);
+}
+
+
+Array.prototype.pack = function <T>(fct: (i: T, index: number, all: T[]) => boolean, skipMatch: PackMatchAction) {
+    const appendToCurrent = (groups: T[][], item: T) => {
+        if (groups.length === 0) {
+            groups.push([]);
+        }
+        groups[groups.length - 1].push(item);
+        return groups;
+    };
+    const changeGroup = (groups: T[][]) => {
+        if (groups.length === 0) {
+            return groups;
+        }
+        groups.push([]);
+        return groups;
+    }
+    // code to remove "o"
+    return this.reduce((groups, item, index, all) => {
+        const res = fct(item, index, all);
+        if (res) {
+            switch (skipMatch) {
+                case PackMatchAction.APPEND_THEN_CHANGE: return changeGroup(appendToCurrent(groups, item));
+                case PackMatchAction.CHANGE_THEN_APPEND: return appendToCurrent(changeGroup(groups), item);
+                case PackMatchAction.SKIP_AND_CHANGE: return changeGroup(groups);
+            }
+        } else {
+            return appendToCurrent(groups, item)
+        }
+    }, []);
+}
+
+
 export function* generator(max: number): Generator<number> {
     let i = 0;
     while (i < max) {
@@ -44,15 +122,6 @@ export function packIf<T, RES extends T[] = T[]>(condition: (item: T, index: num
 export function pack<T>(size: number): (groups: T[][], item: T, index: number, orig: T[]) => T[][] {
     return reduceList(packIf((_item, index, _groups) => index === 0 || index % size === 0));
 }
-type BuildAry<T, Res extends unknown[] = []> = T extends Res["length"]
-    ? Res
-    : BuildAry<T, [...Res, unknown]>;
-type AddOne<T extends number> = BuildAry<T> extends [...infer Rest]
-    ? [...Rest, 1]["length"]
-    : never;
-
-type StrictArray<T, S extends number, POS extends number = 0, RES extends T[] = []> = POS extends S ? [...RES] : StrictArray<T, S, AddOne<POS>, [...RES, T]>;
-
 export function packStrict<T, S extends number>(size: S): (groups: StrictArray<T, S>[], item: T, index: number, orig: T[]) => StrictArray<T, S>[] {
     return reduceList(packIf<T, StrictArray<T, S>>((_item, index, _groups, orig) => {
         if (index === 0 && orig.length % size !== 0) {

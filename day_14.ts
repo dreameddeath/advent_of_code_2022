@@ -1,6 +1,4 @@
-import * as Utils from "./utils";
 import { Logger, Part, run, Type } from "./day_utils"
-import { ExtendedMap } from "./mapUtils";
 
 function parse(lines: string[]): string[] {
     return lines;
@@ -8,7 +6,6 @@ function parse(lines: string[]): string[] {
 
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
-    ExtendedMap
     const data = parse(lines);
     if (part === Part.PART_1) {
         const result = data.length;
@@ -20,4 +17,4 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     }
 }
 
-run(13, [Type.TEST, Type.RUN], puzzle, [Part.PART_1, Part.PART_2])
+run(14, [Type.TEST, Type.RUN], puzzle, [Part.PART_1, Part.PART_2])

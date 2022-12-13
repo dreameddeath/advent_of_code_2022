@@ -1,18 +1,14 @@
-import { genericSort, reduceList, reverseSort } from "../utils";
+import { genericSort, PackMatchAction, reverseSort } from "../utils";
 import { Logger, Part, run, Type } from "../day_utils"
 
-function parse(lines: string[]): (number | undefined)[] {
-    return lines.map(line => line === "" ? undefined : parseInt(line, 10));
+function parse(lines: string[]): number[] {
+    return lines.pack(line => line==="",PackMatchAction.SKIP_AND_CHANGE)
+    .map(pack => pack.map(item=>parseInt(item)).reduce((a,b)=>a+b));
 }
 
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
-    const data = parse(lines).reduce(
-        reduceList(
-            (list: number[], newValue) => (newValue === undefined) ? list.push(0) : list[list.length - 1] += newValue
-        ),
-        []
-    );
+    const data = parse(lines);
 
     data.sort(reverseSort(genericSort()));
     if (part === Part.PART_1) {
