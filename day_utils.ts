@@ -2,14 +2,19 @@ import "./utils";
 import * as fs from 'fs';
 
 export enum Type {
-    TEST,
-    RUN
+    TEST = "TEST",
+    RUN = "RUN"
 }
 
 export enum Part {
     ALL = "BOTH",
     PART_1 = "PART 1",
     PART_2 = "PART 2"
+}
+
+export const failures = {
+    test: { count: 0, parts: [] as string[] },
+    run: { count: 0, parts: [] as string[] },
 }
 
 export function getRawData(day: number, type: Type, part: Part, logger: Logger): string {
@@ -70,7 +75,7 @@ export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: 
     console.log(`[RUNNING] Day ${day}`);
     parts.forEach(part => {
         types.forEach(type => {
-            const logger: Logger = buildLogger(opt?.bench, part, type)
+            const logger: Logger = buildLogger(day, opt?.bench, part, type)
 
             logger.log("Running")
             const data = getData(day, type, part, logger);
@@ -92,7 +97,7 @@ export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: 
     })
 }
 
-function buildLogger(debugMode: boolean | undefined, part: Part, type: Type): Logger {
+function buildLogger(day:number, debugMode: boolean | undefined, part: Part, type: Type): Logger {
     const name = Type[type];
     return {
         debug: debugMode ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
@@ -102,6 +107,9 @@ function buildLogger(debugMode: boolean | undefined, part: Part, type: Type): Lo
             const result_value = calcSuccessMessage(type, value, result);
             const finalMessage = `[${name}][${part}] RESULT ${result_value} ====>${value}<====`;
             if (result_value === "KO") {
+                const target = type === Type.RUN ? failures.run : failures.test;
+                target.count++;
+                target.parts.push(`[DAY ${day} ${part}]`)
                 console.error(finalMessage);
             } else {
                 console.log(finalMessage);
