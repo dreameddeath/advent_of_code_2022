@@ -36,6 +36,7 @@ export function getData(day: number, type: Type, part: Part, logger: Logger): st
 }
 
 export interface Logger {
+    isdebug(): boolean,
     debug(message: string): void,
     log(message: string): void,
     error(message: string): void,
@@ -43,6 +44,7 @@ export interface Logger {
 }
 
 const emptyLogger: Logger = {
+    isdebug: () => false,
     debug: () => { },
     log: () => { },
     error: () => { },
@@ -75,7 +77,7 @@ export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: 
     console.log(`[RUNNING] Day ${day}`);
     parts.forEach(part => {
         types.forEach(type => {
-            const logger: Logger = buildLogger(day, opt?.bench, part, type)
+            const logger: Logger = buildLogger(day, opt?.debug, part, type)
 
             logger.log("Running")
             const data = getData(day, type, part, logger);
@@ -97,9 +99,10 @@ export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: 
     })
 }
 
-function buildLogger(day:number, debugMode: boolean | undefined, part: Part, type: Type): Logger {
+function buildLogger(day: number, debugMode: boolean | undefined, part: Part, type: Type): Logger {
     const name = Type[type];
     return {
+        isdebug: debugMode ? (() => true) : (() => false),
         debug: debugMode ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
         log: (message: string) => console.log(`[${name}][${part}] ${message}`),
         error: (message: string) => console.error(`[${name}][${part}] ${message}`),
