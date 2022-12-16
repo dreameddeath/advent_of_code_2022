@@ -73,10 +73,19 @@ export function doRun<BTAG>(fct: Solver<BTAG>, data: string[], part: Part, type:
     return (new Date()).getTime() - start.getTime();
 }
 
+
+let _disableTests = false;
+
+export function disableTests() {
+    _disableTests = true;
+}
 export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: Part[] = [Part.ALL], opt?: { bench?: boolean, debug?: boolean, benchTags?: BTAG[] }): void {
     console.log(`[RUNNING] Day ${day}`);
     parts.forEach(part => {
         types.forEach(type => {
+            if (_disableTests && type == Type.TEST) {
+                return;
+            }
             const logger: Logger = buildLogger(day, opt?.debug, part, type)
 
             logger.log("Running")
