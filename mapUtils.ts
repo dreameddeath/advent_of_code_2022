@@ -3,8 +3,8 @@ export class ExtendedMap<K, V> extends Map<K, V>{
         super(entries);
     }
 
-    public apply(k: K, fct: (curr: V, key: K) => V, defaultVal: V): V {
-        const curr = this.get(k) ?? defaultVal;
+    public apply(k: K, fct: (curr: V, key: K) => V, initVal: ()=>V): V {
+        const curr = this.get(k) ?? initVal();
         const newVal = fct(curr, k);
         this.set(k, newVal);
         return newVal;

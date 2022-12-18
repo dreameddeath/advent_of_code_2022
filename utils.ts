@@ -9,6 +9,10 @@ export type AddOne<T extends number> = BuildAry<T> extends [...infer Rest]
 
 export type StrictArray<T, S extends number, POS extends number = 0, RES extends T[] = []> = POS extends S ? [...RES] : StrictArray<T, S, AddOne<POS>, [...RES, T]>;
 
+export function strictToArray<T,S extends number>(o:StrictArray<T,S>):T[]{
+    return o as T[];
+}
+
 export enum PackMatchAction {
     SKIP_AND_CHANGE,
     APPEND_THEN_CHANGE,
