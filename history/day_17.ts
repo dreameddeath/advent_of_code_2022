@@ -136,6 +136,27 @@ function moveTower(tower: Tower, winds: DIRECTION[], logger: Logger): DIRECTION[
     return windsUsed;
 }
 
+function calcRelativeHeights(tower: Tower) {
+    const relativeHeights = [-1, -1, -1, -1, -1, -1, -1];
+    let currPos = tower.highest_pos;
+    let heights_to_found = relativeHeights.length;
+    do {
+        const value = tower.lines[currPos];
+        for (let i = 0; i < relativeHeights.length; i++) {
+            if (relativeHeights[i] !== -1) {
+                continue;
+            }
+            if ((value & MAP_OF_MASK[i]) !== 0) {
+                relativeHeights[i] = tower.highest_pos - currPos;
+                heights_to_found--;
+            }
+        }
+        currPos--;
+    } while (heights_to_found > 0);
+    return relativeHeights;
+}
+
+
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     const data = parse(lines);
@@ -190,22 +211,3 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
 
 run(17, [Type.TEST, Type.RUN], puzzle, [Part.PART_1, Part.PART_2], { debug: false })
 
-function calcRelativeHeights(tower: Tower) {
-    const relativeHeights = [-1, -1, -1, -1, -1, -1, -1];
-    let currPos = tower.highest_pos;
-    let heights_to_found = relativeHeights.length;
-    do {
-        const value = tower.lines[currPos];
-        for (let i = 0; i < relativeHeights.length; i++) {
-            if (relativeHeights[i] !== -1) {
-                continue;
-            }
-            if ((value & MAP_OF_MASK[i]) !== 0) {
-                relativeHeights[i] = tower.highest_pos - currPos;
-                heights_to_found--;
-            }
-        }
-        currPos--;
-    } while (heights_to_found > 0);
-    return relativeHeights;
-}
