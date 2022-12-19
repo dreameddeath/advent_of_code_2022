@@ -51,13 +51,32 @@ const emptyLogger: Logger = {
     result: () => { }
 }
 
-function calcSuccessMessage<T>(type: Type, value: T, expectedResult: T | [T, T] | undefined): "OK" | "KO" | "" {
+function calcSuccessMessage<T>(part: Part, type: Type, value: T | [T, T], expectedResult: T | [T, T] | [T, T, T, T] | undefined): "OK" | "KO" | "" {
+    const isValueArray = Array.isArray(value);
+    if ((isValueArray && part !== Part.ALL) || (!isValueArray && part === Part.ALL)) {
+        throw new Error("Iconsistent value result with part type");
+    }
     if (expectedResult === undefined) {
         return "";
     }
     if (Array.isArray(expectedResult)) {
-        const expectedResultValue = type === Type.TEST ? expectedResult[0] : expectedResult[1];
-        return value === expectedResultValue ? "OK" : "KO";
+        if (part === Part.ALL) {
+            const effectiveValue = (value as [T, T]);
+            if (expectedResult.length === 2) {
+                if (type !== Type.TEST) {
+                    return "";
+                }
+                return effectiveValue[0] === expectedResult[0] && effectiveValue[1] === expectedResult[1] ? "OK" : "KO";
+            } else {
+                const effectiveValue = (value as [T, T, T, T]);
+                const effectiveExpected = type === Type.TEST ? [expectedResult[0], expectedResult[2]] : [expectedResult[1], expectedResult[2]];
+                return effectiveValue[0] === effectiveExpected[0] && effectiveValue[1] === effectiveExpected[1] ? "OK" : "KO";
+            }
+        } else {
+            const expectedResultValue = type === Type.TEST ? expectedResult[0] : expectedResult[1];
+            return value === expectedResultValue ? "OK" : "KO";
+        }
+
     } else if (type === Type.TEST) {
         return value === expectedResult ? "OK" : "KO";
     } else {
@@ -115,8 +134,8 @@ function buildLogger(day: number, debugMode: boolean | undefined, part: Part, ty
         debug: debugMode ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
         log: (message: string) => console.log(`[${name}][${part}] ${message}`),
         error: (message: string) => console.error(`[${name}][${part}] ${message}`),
-        result: <T>(value: T, result?: T | [T, T]) => {
-            const result_value = calcSuccessMessage(type, value, result);
+        result: <T>(value: T | [T, T], result?: T | [T, T] | [T, T, T, T]) => {
+            const result_value = calcSuccessMessage(part, type, value, result);
             const finalMessage = `[${name}][${part}] RESULT ${result_value} ====>${value}<====`;
             if (result_value === "KO") {
                 const target = type === Type.RUN ? failures.run : failures.test;
