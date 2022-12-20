@@ -40,7 +40,7 @@ export interface Logger {
     debug(message: string): void,
     log(message: string): void,
     error(message: string): void,
-    result<T>(value: T, testResult?: T | [T, T]): void,
+    result<T>(value: T|[T,T], testResult?: T | [T, T]|[T,T,T,T]): void,
 }
 
 const emptyLogger: Logger = {
@@ -69,7 +69,7 @@ function calcSuccessMessage<T>(part: Part, type: Type, value: T | [T, T], expect
                 return effectiveValue[0] === expectedResult[0] && effectiveValue[1] === expectedResult[1] ? "OK" : "KO";
             } else {
                 const effectiveValue = (value as [T, T, T, T]);
-                const effectiveExpected = type === Type.TEST ? [expectedResult[0], expectedResult[2]] : [expectedResult[1], expectedResult[2]];
+                const effectiveExpected = type === Type.TEST ? [expectedResult[0], expectedResult[2]] : [expectedResult[1], expectedResult[3]];
                 return effectiveValue[0] === effectiveExpected[0] && effectiveValue[1] === effectiveExpected[1] ? "OK" : "KO";
             }
         } else {
