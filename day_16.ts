@@ -1,5 +1,6 @@
 import { max } from "date-fns";
 import { nb, ta } from "date-fns/locale";
+import { number } from "yargs";
 import { Logger, Part, run, Type } from "./day_utils"
 import { ExtendedMap } from "./mapUtils";
 import { PriorityQueue, QueuedItem } from "./priority_queue";
@@ -133,8 +134,10 @@ interface AgentState {
 
 interface State {
     minutes: number,
+    remainingMinutes: number,
     cumulFlowRate: number,
     released: number,
+    lastOpened: ValveDef[];
     agentsState: AgentState[],
     notOpened: string[],
     notOpenedFlowRate: number,
@@ -197,7 +200,8 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
     };
     const priorityList = new PriorityQueue<State>(cost);
     const fakeTarget: WeightedNextToVisit = {
-        potentialReleased: 0, pathInfo: {
+        potentialReleased: 0,
+        pathInfo: {
             path: [],
             target: start
         }
@@ -205,6 +209,8 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
     const initialState: State = {
         minutes: 0,
         cumulFlowRate: 0,
+        remainingMinutes: maxDuration,
+        lastOpened: [],
         released: 0,
         notOpened: toVisit,
         notOpenedFlowRate: maxRate,
@@ -228,7 +234,7 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
             isDebugFilteredDone = true;
         }
         const state = cloneState(initialState, targets.map(toIndexed), isDebug);
-        forwardStateToNearestTarget(state, maxDuration, isDebug);
+        forwardStateToNearestTarget(state, isDebug);
         priorityList.put(state);
     })
     while ((nextToProcess = priorityList.pop()) !== undefined) {
@@ -244,7 +250,7 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
         }
         const toOpen = state.agentsState.map(toIndexed)
             .filter(item => item.v.distanceToTarget === 0);
-        advanceMinutes(state, 1, maxDuration, toOpen, isDebug);
+        advanceMinutes(state, 1, toOpen, isDebug);
         const targetsOpened = toOpen
             .map(agentRef => {
                 const targetReached = agentRef.v.currPath.pathInfo.target;
@@ -259,7 +265,7 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
                     pos: agentRef.pos
                 }
             });
-        forwardStateToNearestTarget(state, maxDuration, true);
+        forwardStateToNearestTarget(state, true);
         const effectiveToExplore = state.notOpened.filter(n => state.agentsState.find(a => a.currPath.pathInfo.target.name === n) === undefined)
         if (state.minutes >= maxDuration || effectiveToExplore.length === 0) {
             priorityList.put(state);
@@ -287,7 +293,7 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
                     isFilteredForDebug = true;
                 }
                 const nextState = cloneState(state, tuple, isDebug);
-                forwardStateToNearestTarget(nextState, maxDuration, isDebug);
+                forwardStateToNearestTarget(nextState, isDebug);
                 priorityList.put(nextState);
             }
         }
@@ -301,8 +307,8 @@ function findMaximisedRelease(start: ValveDef, world: ValveDef[], maxDuration: n
 }
 
 //true if overflow maxDuration
-function advanceMinutes(state: State, nb: number, maxDuration: number, beingOpened: IndexedValue<AgentState>[], isDebug: boolean): void {
-    const nbMinutes = Math.min(maxDuration - state.minutes, nb);
+function advanceMinutes(state: State, nb: number, beingOpened: IndexedValue<AgentState>[], isDebug: boolean): void {
+    const nbMinutes = Math.min(state.remainingMinutes, nb);
     if (nbMinutes === 0) {
         return;
     }
@@ -318,10 +324,12 @@ function advanceMinutes(state: State, nb: number, maxDuration: number, beingOpen
         });
     state.released += state.cumulFlowRate * nbMinutes;
     state.minutes += nb;
+    state.remainingMinutes -= nb;
 }
 
 function cloneState(origState: State, targets: IndexedValue<WeightedNextToVisit>[], isDebug: boolean): State {
     const cloneState = { ...origState };
+    cloneState.lastOpened = [];
     cloneState.notOpened = [...cloneState.notOpened];
     cloneState.agentsState = cloneState.agentsState.map((currentAgent, i) => {
         const found = targets.find(t => t.pos === i);
@@ -338,12 +346,146 @@ function cloneState(origState: State, targets: IndexedValue<WeightedNextToVisit>
 }
 
 
-function forwardStateToNearestTarget(nextState: State, maxDuration: number, isDebug: boolean) {
+function forwardStateToNearestTarget(nextState: State, isDebug: boolean) {
     const minDistance = nextState.agentsState.map((a) => a.distanceToTarget).sort((a, b) => a - b)[0];
-    advanceMinutes(nextState, minDistance, maxDuration, [], isDebug);
+    advanceMinutes(nextState, minDistance, [], isDebug);
 }
 
+type ValveOpenings = { after: number, valves: ValveDef[] }[]
 
+interface BestOutcome {
+    maxRemainingMinutes: number,
+    nextValvesToOpen: ValveOpenings
+}
+
+interface VisitResult {
+    released: number,
+    bestOutcome: BestOutcome;
+}
+
+type Cache = {
+    map: ExtendedMap<string, BestOutcome[]>;
+    bestReleased: number;
+}
+
+function calcNewValveOpenings(state: State, bestOutCome: BestOutcome): ValveOpenings {
+    return [
+        {
+            after: state.remainingMinutes,
+            valves: state.lastOpened
+        },
+        ...bestOutCome.nextValvesToOpen
+    ]
+}
+
+function calcTotalReleased(state: State, openings: ValveOpenings): number {
+    let released = state.released;
+    let cumulFlowRate = state.cumulFlowRate;
+    let remaining = state.remainingMinutes;
+    for (const opening of openings) {
+        released += cumulFlowRate * opening.after;
+        state.remainingMinutes -= opening.after;
+        cumulFlowRate += opening.valves.reduce((c, v) => c + v.flowRate, 0);
+    }
+    released += cumulFlowRate * remaining;
+    return released;
+}
+
+function buildNextPossibleStates(state:State,isDebug:boolean,cache:Cache):State[]{
+    const indexedAgents = state.agentsState.map(toIndexed);
+    const agentNotOpened = indexedAgents.filter(a=>a.v.distanceToTarget>0);
+    const effectiveToExplore = state.notOpened.filter(n => state.agentsState.find(a => a.currPath.pathInfo.target.name === n) === undefined);
+    const targetsToExplore = agentNotOpened.map(targetRef => {
+        return {
+            pos: targetRef.pos,
+            v: orderedNextToVisit(targetRef.v.currPath.pathInfo.target, state.remainingMinutes, effectiveToExplore)
+        }
+    });
+    const nextTuples = setupPairsIntermediate(targetsToExplore);
+    const result:State[] =[] 
+    for (const tuple of nextTuples) {
+        const nextState = cloneState(state, tuple, isDebug);
+        forwardStateToNearestTarget(nextState, isDebug);
+        result.push(state);
+    }
+
+    return result;
+}
+
+function explore(state: State, isDebug: boolean, cache: Cache): VisitResult {
+    const key = state.agentsState.map(a => `d:${a.distanceToTarget};${a.currPath.pathInfo.target.name}`).join("|") + "=>" + state.notOpened.join(";");
+    const outcomes = cache.map.cache(key, () => []);
+    if (outcomes.length > 0 && outcomes[outcomes.length - 1].maxRemainingMinutes > state.remainingMinutes) {
+        for (let pos = 0; pos < outcomes.length; ++pos) {
+            const outcome = outcomes[pos];
+            if (state.remainingMinutes <= outcome.maxRemainingMinutes) {
+                const totalReleased = calcTotalReleased(state, outcome.nextValvesToOpen);
+                const newValveOpenings = calcNewValveOpenings(state, outcome);
+                return {
+                    bestOutcome: {
+                        maxRemainingMinutes: Number.MAX_SAFE_INTEGER,
+                        nextValvesToOpen: newValveOpenings
+                    },
+                    released: totalReleased
+                }
+            }
+        }
+    }
+    const nextStates = buildNextPossibleStates(state,isDebug,cache);
+    for(const nextState of nextStates){
+        const {bestOutcome}=explore(nextState,isDebug,cache);
+        
+    }
+
+    return {
+        bestOutcome: {
+            maxRemainingMinutes:0,
+            nextValvesToOpen:[]
+        },
+        released:0,
+    }
+    //orderedNextToVisit(state, maxDuration, toVisit);
+}
+
+function maximizeDfs(start: ValveDef, world: ValveDef[], maxDuration: number, isDebug: boolean, nbAgents: number): VisitResult {
+    const toVisit = world.filter(v => v.flowRate !== 0).sort((a, b) => a.flowRate - b.flowRate).map(v => v.name).filter(n => n !== start.name);
+    const maxRate = world.map(v => v.flowRate).reduce((a, b) => a + b);
+    const totalMaximum = maxRate * maxDuration;
+    const cache: Cache = {
+        map: new ExtendedMap(),
+        bestReleased: 0
+    }
+    const fakeTarget: WeightedNextToVisit = {
+        potentialReleased: 0,
+        pathInfo: {
+            path: [],
+            target: start
+        }
+    };
+
+    const initialState: State = {
+        minutes: 0,
+        cumulFlowRate: 0,
+        remainingMinutes: maxDuration,
+        released: 0,
+        lastOpened:[start],
+        notOpened: toVisit,
+        notOpenedFlowRate: maxRate,
+        agentsState: [...generator(nbAgents)].map(_ => buildAgent(start, fakeTarget, isDebug ? [start.name] : EMPTY_LIST_VISITED, isDebug)),
+    };
+
+    const initialTargets = orderedNextToVisit(start, maxDuration, toVisit);
+    const nextStates = setupPairs(initialTargets, nbAgents).map((targets) => {
+        const state = cloneState(initialState, targets.map(toIndexed), isDebug);
+        forwardStateToNearestTarget(state, isDebug);
+        return state;
+    });
+    const results: VisitResult[] = [];
+    for (const nextState of nextStates) {
+        results.push(explore(nextState, isDebug, cache));
+    }
+    return results.sort((a, b) => b.released - a.released)[0]
+}
 
 
 function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {

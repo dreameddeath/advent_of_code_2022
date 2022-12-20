@@ -20,18 +20,19 @@ import "./history/day_15";
 import "./history/day_17";
 import "./history/day_18";
 import "./history/day_19";
+import "./history/day_20";
 
 const duration = new Date().getTime() - start;
 
 console.log(`\n[Global] All run in ${duration} ms`);
 let totalFailures = 0;
-for(let domain in failures){
+for (let domain in failures) {
     const domainFailures = failures[domain as keyof typeof failures];
-    if(domainFailures.count > 0){
-        totalFailures+=domainFailures.count;
+    if (domainFailures.count > 0) {
+        totalFailures += domainFailures.count;
         console.error(`[Global] ${domain} Failure(s) : ${domainFailures.count} / ${domainFailures.parts}`);
     }
 }
-if(totalFailures===0){
-    console.log(`\n[Global] No errors`);   
+if (totalFailures === 0) {
+    console.log(`\n[Global] No errors`);
 }

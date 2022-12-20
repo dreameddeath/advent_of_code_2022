@@ -154,7 +154,7 @@ function calcNextPossibleStates(blueprint: Blueprint, state: State, cache: Cache
     };
 }
 
-function calcNextGeodeProductionChange(curr: State, durationOffset: number, increaseProduction: boolean, bestOutCome: BestOutcome): NextGeodProducerIncrease {
+function calcNextGeodeProductionChange(durationOffset: number, increaseProduction: boolean, bestOutCome: BestOutcome): NextGeodProducerIncrease {
     if (increaseProduction) {
         return [{
             after: durationOffset
@@ -178,7 +178,7 @@ function calcBestOutcome(blueprint: Blueprint, state: State, cache: Cache): { pr
         for (let pos = 0; pos < outcomes.length; ++pos) {
             const outcome = outcomes[pos];
             if (state.remainingMinutes <= outcome.maxRemainingMinutes) {
-                const newNextGeod = calcNextGeodeProductionChange(state, 0, false, outcome);
+                const newNextGeod = calcNextGeodeProductionChange(0, false, outcome);
                 const produced = calcProduction(state, newNextGeod);
                 cache.bestProduced = Math.max(cache.bestProduced, produced);
                 return {
@@ -202,7 +202,7 @@ function calcBestOutcome(blueprint: Blueprint, state: State, cache: Cache): { pr
     for (const nextState of nextStates.states) {
         const durationOffset = state.remainingMinutes - nextState.remainingMinutes;
         const { bestOutcome } = calcBestOutcome(blueprint, nextState, cache);
-        const newNextGeod = calcNextGeodeProductionChange(state, durationOffset, state.productionRates[GEODE_POS] < nextState.productionRates[GEODE_POS], bestOutcome);
+        const newNextGeod = calcNextGeodeProductionChange(durationOffset, state.productionRates[GEODE_POS] < nextState.productionRates[GEODE_POS], bestOutcome);
         let nbGeodProduced = calcProduction(state, newNextGeod);
         if (nbGeodProduced > currBestProduceGeod) {
             currBestProduceGeod = nbGeodProduced;
