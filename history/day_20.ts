@@ -1,4 +1,4 @@
-import { Logger, Part, run, Type } from "../day_utils"
+import { Logger, Part, run, Type, PartialBy } from "../day_utils"
 import { generator } from "../utils";
 
 interface LinkedListItem {
@@ -6,7 +6,7 @@ interface LinkedListItem {
     originNext: LinkedListItem,
 }
 
-type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
 type LinkedListItemBuilder = PartialBy<LinkedListItem, 'originNext'>
 
 function parse(lines: string[]): LinkedListItem[] {

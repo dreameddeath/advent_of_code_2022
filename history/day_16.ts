@@ -29,15 +29,15 @@ function parse(lines: string[]): Map<string, ValveDef> {
             connectedTo: linksList,
             leadTo: new ExtendedMap(),
             shortestPathTo: new ExtendedMap(),
-            //hasPathToUsingTunnel: new ExtendedMap()
         });
     });
     mapValves.forEach(v => {
         v.connectedTo.forEach(n => v.leadTo.set(n, forcePresent(mapValves.get(n))));
     });
     const valves = [...mapValves.values()];
-    valves.forEach(valve => {
-        valves.filter(t => t.name !== valve.name).forEach(t => valve.shortestPathTo.set(t.name, hasPathTo(valve, t)))
+    const filterNeededValvePathes = (v:ValveDef):boolean=>v.name==="AA" || v.flowRate>0;
+    valves.filter(filterNeededValvePathes).forEach(valve => {
+        valves.filter(filterNeededValvePathes).filter(t => t.name !== valve.name).forEach(t => valve.shortestPathTo.set(t.name, hasPathTo(valve, t)))
     })
     return mapValves;
 }
@@ -48,6 +48,14 @@ interface HasPathToState {
 }
 
 function hasPathTo(valve: ValveDef, target: ValveDef): ShortestPathInfo {
+    //Already calculated the other way around
+    if (target.shortestPathTo.get(valve.name) !== undefined) {
+        const path = target.shortestPathTo.get(valve.name)!;
+        return {
+            path: [...path.path].reverse(),
+            target: target,
+        }
+    }
     const queue = new PriorityQueue<HasPathToState>(s => s.visited.length);
     queue.put({ curr: valve, visited: [valve.name] }, "");
     let state: QueuedItem<HasPathToState> | undefined;

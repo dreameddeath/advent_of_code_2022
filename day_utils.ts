@@ -1,6 +1,9 @@
 import "./utils";
 import * as fs from 'fs';
 
+
+export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
 export enum Type {
     TEST = "TEST",
     RUN = "RUN"
