@@ -273,31 +273,33 @@ interface FaceToFaceMapEntry {
     }
 }
 
-interface FaceToFaceMap {
+interface SimpleFaceJointsCalcInfo {
     left: FaceToFaceMapEntry,
     right: FaceToFaceMapEntry,
     up: FaceToFaceMapEntry,
     down: FaceToFaceMapEntry,
 }
 
-function calcFolding(world: Cell[][]):CubeFace[] {
-    const size = calcFaceSize(world);
-    const faces: CubeFace[] = [];
-    const width = world[0].length;
-    const height = world.length;
-    const VERTEXES_LABEL = [...generator(8)].map((i) => "V" + (i + 1));
-    initCubeFaces(height, size, width, world, faces);
-    let nbFoundLinks = 0;
+/**
+ * Calculate the faces and their links
+ * @param world all the cells
+ * @returns 
+ */
+function calcFolding(world: Cell[][]): CubeFace[] {
+    //Create empty faces with only vertexes without labels
+    const faces = initCubeFaces(world);
 
-    for (let pos = 0; pos < faces.length; ++pos) {
-        const face = faces[pos];
-        const map: FaceToFaceMap = calcMappingOfSimpleJointFaces(face);
+    const VERTEXES_LABEL = [...generator(8)].map((i) => "V" + (i + 1));
+
+    //Init the cube face links for "simple" cases (direct attach)
+    for (const face of faces) {
+        const map: SimpleFaceJointsCalcInfo = calcMappingOfSimpleJointFaces(face);
 
         for (const otherFace of faces) {
             for (const [key, coord] of Object.entries(map) as [Direction, FaceToFaceMapEntry][]) {
+                //face are joints, link them
                 if (coord.x >= otherFace.vextexes[VextexPos.UP_LEFT].coord.x && coord.x <= otherFace.vextexes[VextexPos.DOWN_RIGHT].coord.x &&
                     coord.y >= otherFace.vextexes[VextexPos.UP_LEFT].coord.y && coord.y <= otherFace.vextexes[VextexPos.DOWN_RIGHT].coord.y) {
-                    ++nbFoundLinks;
 
                     //init links
                     face.links[key] = {
@@ -305,14 +307,17 @@ function calcFolding(world: Cell[][]):CubeFace[] {
                         newMovingDirection: key
                     }
 
-                    //Init Vertex Mapping
+                    //Init Vertex Mapping and labelling
                     for (const mapping of [coord.vextex_map.v1, coord.vextex_map.v2]) {
                         if (otherFace.vextexes[mapping.other].label !== "") {
                             face.vextexes[mapping.curr].label = otherFace.vextexes[mapping.other].label;
                         } else if (face.vextexes[mapping.curr].label !== "") {
                             otherFace.vextexes[mapping.other].label = face.vextexes[mapping.curr].label;
                         } else {
-                            const newLabel = VERTEXES_LABEL.shift()!;
+                            const newLabel = VERTEXES_LABEL.shift();
+                            if (newLabel === undefined) {
+                                throw new Error("Shouldn't occurs");
+                            }
                             face.vextexes[mapping.curr].label = newLabel;
                             otherFace.vextexes[mapping.other].label = newLabel;
                         }
@@ -323,35 +328,44 @@ function calcFolding(world: Cell[][]):CubeFace[] {
         }
     }
 
-    while (nbFoundLinks < (6 * 4)) {
-        nbFoundLinks = 0
+    //Try to create missing links between faces
+    while (faces.flatMap(f => Object.keys(f.links)).length < 6 * 4) {
         for (const face of faces) {
             for (const direction of ALL_DIRECTIONS) {
                 if (face.links[direction] !== undefined) {
-                    nbFoundLinks++
                     continue;
                 }
+                //from a given direction, if you turn 3 times with the same rotation (and change face through that direction)
+                // you come back to the initial edge 
                 for (const orientation of ["L", "R"] as const) {
                     let nbRotations = 3;
                     let currFace = face;
+                    //reverse direction to do as if you were coming from that edge
                     let currDirection = toMovingDirection(direction);
                     let found = true;
                     while (found && nbRotations > 0) {
                         nbRotations--;
+                        //Rotate
                         const newDirection = applyRotateToDirection(currDirection, orientation);
+                        //Change face
                         const newFace = currFace.links[newDirection]?.to;
+                        //Last rotation, we are at the "right" face
                         if (nbRotations === 0) {
                             currDirection = newDirection;
-                        } else if (newFace !== undefined) {
+                        }
+                        else if (newFace !== undefined) {
+                            //we need to correct the direction after having gone through the edge
                             currDirection = toMovingDirection(findOrigDirection(currFace, newFace));
                             currFace = newFace;
-                        } else {
+                        }
+                        //The link doesn't exist yet, exit the loop
+                        else {
                             found = false;
                         }
                     }
 
+                    //The origin face has been found (and the direction)
                     if (found) {
-                        nbFoundLinks++;
                         currFace.links[currDirection] = {
                             to: face,
                             newMovingDirection: toMovingDirection(direction),
@@ -366,26 +380,33 @@ function calcFolding(world: Cell[][]):CubeFace[] {
         }
     }
 
+    //Build missing labels on vertexes using links between faces
     while (faces.flatMap(face => face.vextexes.map(v => v.label)).filter(c => c === "").length > 0) {
         for (const face of faces) {
             for (const vertexPos of [VextexPos.UP_LEFT, VextexPos.UP_RIGHT, VextexPos.DOWN_LEFT, VextexPos.DOWN_RIGHT]) {
                 if (face.vextexes[vertexPos].label === "") {
                     face.vextexes[vertexPos].label = findMatchingOtherNode(vertexPos, face)
-                    if (face.vextexes[vertexPos].label === '') {
-                        face.vextexes[vertexPos].label = VERTEXES_LABEL.shift()!;
+                    if (face.vextexes[vertexPos].label === '') { //Vertex label not found, affect a new label
+                        const newLabel = VERTEXES_LABEL.shift();
+                        if (newLabel === undefined) {
+                            throw new Error("Shouldn't occurs");
+                        }
+                        face.vextexes[vertexPos].label = newLabel;
                     }
                 }
             }
         }
     }
+
+    //All labels and links found exit
     return faces;
 }
 
-function applyCellRelink(world: Cell[][], face: CubeFace, direction: Direction) {
-    const link = face.links[direction]!;
-    const otherFaceDirection = findOrigDirection(face, link.to);
+function applyCellRelinkForAllLinkFaces(world: Cell[][], face: CubeFace, direction: Direction) {
+    const linkInfo = face.links[direction]!;
+    const otherFaceDirection = findOrigDirection(face, linkInfo.to);
     const faceVertex = getVertexInfo(face, direction);
-    const otherVertex = getVertexInfo(link.to, otherFaceDirection);
+    const otherVertex = getVertexInfo(linkInfo.to, otherFaceDirection);
     if (faceVertex[0].label !== otherVertex[0].label) {
         otherVertex.reverse();
     }
@@ -401,7 +422,7 @@ function applyCellRelink(world: Cell[][], face: CubeFace, direction: Direction) 
         } else {
             world[currSourceCoord.y][currSourceCoord.x][direction] = {
                 target: newTarget,
-                newMoveDirection: link.newMovingDirection
+                newMoveDirection: linkInfo.newMovingDirection
             };
         }
 
@@ -434,9 +455,7 @@ function getVertexInfo(face: CubeFace, direction: Direction): [VertexInfo, Verte
     }
 }
 
-
-
-function calcMappingOfSimpleJointFaces(face: CubeFace): FaceToFaceMap {
+function calcMappingOfSimpleJointFaces(face: CubeFace): SimpleFaceJointsCalcInfo {
     return {
         left: {
             x: face.vextexes[VextexPos.UP_LEFT].coord.x - 1,
@@ -473,25 +492,32 @@ function calcMappingOfSimpleJointFaces(face: CubeFace): FaceToFaceMap {
     } as const;
 }
 
-function initCubeFaces(height: number, size: number, width: number, world: Cell[][], faces: CubeFace[]) {
-    let name = "A".charCodeAt(0);
-    for (let y = 0; y < height; y += size) {
-        for (let x = 0; x < width; x += size) {
+function initCubeFaces(world: Cell[][]): CubeFace[] {
+    const faces: CubeFace[] = [];
+
+    const width = world[0].length;
+    const height = world.length;
+    const faceSize = calcFaceSize(world);
+
+    let currName = "A".charCodeAt(0);
+    for (let y = 0; y < height; y += faceSize) {
+        for (let x = 0; x < width; x += faceSize) {
             const cell = world[y][x];
             if (cell.type !== CellType.EMPTY) {
                 faces.push({
-                    name: String.fromCharCode(name++),
+                    name: String.fromCharCode(currName++),
                     vextexes: [
                         { coord: { x, y }, label: "" },
-                        { coord: { x: x + size - 1, y }, label: "" },
-                        { coord: { x, y: y + size - 1 }, label: "" },
-                        { coord: { x: x + size - 1, y: y + size - 1 }, label: "" }
+                        { coord: { x: x + faceSize - 1, y }, label: "" },
+                        { coord: { x, y: y + faceSize - 1 }, label: "" },
+                        { coord: { x: x + faceSize - 1, y: y + faceSize - 1 }, label: "" }
                     ],
                     links: {}
                 });
             }
         }
     }
+    return faces;
 }
 
 function findOrigDirection(source: CubeFace, target: CubeFace): Direction {
@@ -577,7 +603,7 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
         const faces = calcFolding(data.world);
         for (const face of faces) {
             for (const direction of ALL_DIRECTIONS) {
-                applyCellRelink(data.world, face, direction);
+                applyCellRelinkForAllLinkFaces(data.world, face, direction);
             }
         }
         const result = applyInstructions(data, initState)
