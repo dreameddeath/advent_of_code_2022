@@ -25,6 +25,7 @@ import "./history/day_20";
 import "./history/day_21";
 import "./history/day_22";
 import "./history/day_23";
+import "./history/day_24";
 
 const duration = new Date().getTime() - start;
 
