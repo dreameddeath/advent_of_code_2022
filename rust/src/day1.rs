@@ -1,4 +1,4 @@
-use crate::utils::Part;
+use crate::utils::{Part, Dataset};
 pub fn parse(lines: &Vec<String>) -> Vec<i32> {
     return lines
         .into_iter()
@@ -12,7 +12,7 @@ pub fn parse(lines: &Vec<String>) -> Vec<i32> {
         .collect();
 }
 
-pub fn puzzle(part: &Part, lines: &Vec<String>) {
+pub fn puzzle(part: &Part,set:&Dataset, lines: &Vec<String>) {
     let values = parse(lines);
 
     let mut grouped_sum: Vec<i32> = values

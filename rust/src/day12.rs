@@ -3,7 +3,7 @@ use std::{
     fmt,
 };
 
-use crate::utils::Part;
+use crate::utils::{Dataset, Part};
 
 #[derive(Eq, PartialEq, Debug)]
 enum Type {
@@ -147,7 +147,7 @@ fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P
         if is_end(&next.map_item) {
             return Option::Some(next.nb_step);
         }
-        
+
         for dir in Direction::VALUES.iter() {
             if let Some(to_explore) = get_next_pos(&map, &next, dir) {
                 let key = key(&to_explore);
@@ -179,9 +179,9 @@ fn build_start<'a, P: Fn(&'a MapItem) -> bool>(map: &'a MapWorld, p: &'a P) -> O
     })
 }
 
-const DEBUG:bool = true;
+const DEBUG: bool = true;
 
-pub fn puzzle(part: &Part, lines: &Vec<String>) {
+pub fn puzzle(part: &Part, set: &Dataset, lines: &Vec<String>) {
     let map = parse(lines);
 
     match part {

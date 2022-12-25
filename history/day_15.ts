@@ -399,7 +399,7 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
                     coords: coords
                 }
             });
-        const matchingAreas = remainingRanges.filter(rInfo => rInfo.area > 0.8 && rInfo.area < 2)
+        const matchingAreas = remainingRanges.filter(rInfo => Math.round(rInfo.area*100) === 200)//The target zone must have an area of 2 (sqrt(2)**2)
         if (matchingAreas.length !== 1) {
             throw new Error("Bad filtering");
         }
