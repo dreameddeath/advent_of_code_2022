@@ -1,202 +1,161 @@
-use std::{
-    collections::{BinaryHeap, HashMap},
-    fmt,
-};
-
 use crate::{
     check_result,
-    utils::{Context, Part},
+    priority_queue::{Cost, Key, PriorityQueue},
+    utils::Context,
 };
 
-#[derive(Eq, PartialEq, Debug)]
-enum Type {
-    START,
-    END,
-    STANDARD,
+#[derive(Debug, PartialEq, Eq)]
+enum ObjectType {
+    BlizzardDown,
+    BlizzardUp,
+    BlizzardLeft,
+    BlizzardRight,
+    Empty,
 }
 
-#[derive(Eq, PartialEq, Debug)]
-struct MapItem {
-    height: u8,
-    item_type: Type,
+//type CellContent = ObjectType | undefined;
+
+struct World {
+    width: i16,
+    height: i16,
+    cells: Vec<ObjectType>,
 }
 
-struct MapWorld {
-    items: Vec<Vec<MapItem>>,
-    width: u8,
-    height: u8,
-}
-
-fn parse(lines: &Vec<String>) -> MapWorld {
-    let ref_char = Into::<u32>::into('a');
-    return MapWorld {
-        items: lines
+fn parse(lines: &Vec<String>) -> World {
+    let height: i16 = lines.len() as i16 - 2;
+    let width: i16 = lines.get(0).map(|line| line.len() as i16 - 2).unwrap_or(0);
+    World {
+        width,
+        height,
+        cells: lines
             .into_iter()
-            .map(|l| {
-                l.chars()
-                    .map(|c| {
-                        if c == 'S' {
-                            MapItem {
-                                height: 0,
-                                item_type: Type::START,
-                            }
-                        } else if c == 'E' {
-                            MapItem {
-                                height: (Into::<u32>::into('z') - ref_char) as u8,
-                                item_type: Type::END,
-                            }
-                        } else if c >= 'a' && c <= 'z' {
-                            MapItem {
-                                height: (Into::<u32>::into(c) - ref_char) as u8,
-                                item_type: Type::STANDARD,
-                            }
-                        } else {
-                            panic!("Not managed char {}", c)
-                        }
+            .take(lines.len() - 1)
+            .skip(1)
+            .flat_map(|line| {
+                line.chars()
+                    .into_iter()
+                    .take(line.len() - 1)
+                    .skip(1)
+                    .map(|c| match c {
+                        '^' => ObjectType::BlizzardUp,
+                        'v' => ObjectType::BlizzardDown,
+                        '>' => ObjectType::BlizzardRight,
+                        '<' => ObjectType::BlizzardLeft,
+                        _ => ObjectType::Empty,
                     })
-                    .collect()
             })
             .collect(),
-        width: lines.get(0).map(|l| l.len() as u8).unwrap(),
-        height: lines.len() as u8,
-    };
-}
-
-#[derive(Eq, PartialEq, Debug)]
-struct Node<'a> {
-    x: u16,
-    y: u16,
-    map_item: &'a MapItem,
-    nb_step: u16,
-}
-
-impl<'a> fmt::Display for Node<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "(x:{}, y:{}, h:{}, s:{})",
-            self.x, self.y, self.map_item.height, self.nb_step
-        )
     }
 }
 
-impl<'a> Ord for Node<'a> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.nb_step.cmp(&self.nb_step)
-    }
+#[derive(Debug)]
+struct Coord {
+    x: i16,
+    y: i16,
 }
 
-impl<'a> PartialOrd for Node<'a> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        other.nb_step.partial_cmp(&self.nb_step)
-    }
+#[derive(Debug)]
+struct State<'a> {
+    coord: Coord,
+    mins: u16,
+    target: &'a Coord,
 }
 
-#[derive(Eq, PartialEq)]
-enum Direction {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-}
+static OFFSET: &'static [(i16, i16)] = &[(-1, 0), (1, 0), (0, -1), (0, 1), (0, 0)];
 
-impl Direction {
-    const VALUES: [Self; 4] = [Self::UP, Self::DOWN, Self::LEFT, Self::RIGHT];
-}
-
-fn get_next_pos<'a>(map: &'a MapWorld, curr: &Node, direction: &Direction) -> Option<Node<'a>> {
-    let new_x = if *direction == Direction::LEFT {
-        curr.x as i16 - 1
-    } else if *direction == Direction::RIGHT {
-        curr.x as i16 + 1
-    } else {
-        curr.x as i16
-    };
-    let new_y = if *direction == Direction::UP {
-        curr.y as i16 + 1
-    } else if *direction == Direction::DOWN {
-        curr.y as i16 - 1
-    } else {
-        curr.y as i16
-    };
-
-    if new_x < 0 || new_x >= map.width as i16 || new_y < 0 || new_y > map.height as i16 {
-        return Option::None;
-    }
-
-    return map
-        .items
-        .get(new_y as usize)
-        .and_then(|line| line.get(new_x as usize))
-        .filter(|next_item| next_item.height + 1 >= curr.map_item.height)
-        .map(|item| Node {
-            x: new_x as u16,
-            y: new_y as u16,
-            map_item: item,
-            nb_step: curr.nb_step + 1,
-        });
-}
-
-fn key(node: &Node) -> u16 {
-    return ((node.y as u16) << 8) | node.x as u16;
-}
-
-fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P) -> Option<u16> {
-    //let mut processed: HashMap<u16,u16> = HashMap::new();
-    let mut best_inserted: HashMap<u16, u16> = HashMap::new();
-    let mut priority_queue: BinaryHeap<Node> = BinaryHeap::new();
-    priority_queue.push(start_pos);
-    while let Some(next) = priority_queue.pop() {
-        if is_end(&next.map_item) {
-            return Option::Some(next.nb_step);
+fn calc_index(coord: &Coord, world: &World, minutes_offset: (i16, i16)) -> usize {
+    if minutes_offset.1 == 0 {
+        let mut offset = (coord.x + minutes_offset.0) % world.width;
+        if offset < 0 {
+            offset += world.width
         }
+        (coord.y * world.width + offset) as usize
+    } else {
+        let mut offset = (coord.y  + minutes_offset.1) % world.height;
+        if offset < 0 {
+            offset += world.height
+        }
+        (offset * world.width + coord.x) as usize
+    }
+}
 
-        for dir in Direction::VALUES.iter() {
-            if let Some(to_explore) = get_next_pos(&map, &next, dir) {
-                let key = key(&to_explore);
-                if best_inserted
-                    .get(&key)
-                    .filter(|step| **step <= to_explore.nb_step)
-                    .is_none()
-                {
-                    best_inserted.insert(key, to_explore.nb_step);
-                    priority_queue.push(to_explore);
-                }
-            }
+fn is_occupied(coord: &Coord, min: &u16, world: &World) -> bool {
+    let d: i16 = *min as i16;
+    return world.cells[calc_index(coord, world, (d, 0))] == ObjectType::BlizzardLeft
+        || world.cells[calc_index(coord, world, (-d, 0))] == ObjectType::BlizzardRight
+        || world.cells[calc_index(coord, world, (0, -d))] == ObjectType::BlizzardDown
+        || world.cells[calc_index(coord, world, (0, d))] == ObjectType::BlizzardUp;
+}
+
+fn get_next_state<'a>(curr: &State<'a>, world: &World) -> Vec<State<'a>> {
+    OFFSET
+        .into_iter()
+        .map(|offset| State {
+            coord: Coord {
+                x: curr.coord.x + offset.0,
+                y: curr.coord.y + offset.1,
+            },
+            mins: curr.mins + 1,
+            target: curr.target,
+        })
+        .filter(|new_state| {
+            let is_start = new_state.coord.y == -1 && new_state.coord.x == 0;
+            let is_end = new_state.coord.y == world.height
+                && new_state.coord.x == (world.width - 1);
+            let is_valid_coord = (new_state.coord.x >= 0 && new_state.coord.x < world.width)
+                && (new_state.coord.y >= 0 && new_state.coord.y < world.height);
+            is_start
+                || is_end
+                || (is_valid_coord && !is_occupied(&new_state.coord, &new_state.mins, world))
+        })
+        .collect()
+}
+
+impl<'a> Cost<u16> for State<'a> {
+    fn cost(&self) -> u16 {
+        self.mins
+            + (self.target.x - self.coord.x).abs() as u16
+            + (self.target.y - self.coord.y).abs() as u16
+    }
+}
+
+impl<'a> Key<u32> for State<'a> {
+    fn key(&self) -> u32 {
+        (self.mins as u32) << 16 | (((self.coord.y + 1) as u32) << 8) | (self.coord.x + 1) as u32
+    }
+}
+
+fn find_path<'a>(world: &World, start: &Coord, target: &'a Coord, start_min: &u16) -> Option<u16> {
+    let mut priority_queue: PriorityQueue<u16, u32, State<'a>> = PriorityQueue::new();
+    priority_queue.push(State {
+        coord: Coord {
+            x: start.x,
+            y: start.y,
+        },
+        mins: *start_min,
+        target,
+    });
+    while let Some(next) = priority_queue.pop() {
+        if next.coord.x == target.x && next.coord.y == target.y {
+            return Option::Some(next.mins);
+        }
+        for new_state in get_next_state(&next, &world) {
+            priority_queue.push(new_state)
         }
     }
     return Option::None;
 }
 
-fn build_start<'a, P: Fn(&'a MapItem) -> bool>(map: &'a MapWorld, p: &'a P) -> Option<Node<'a>> {
-    map.items.iter().enumerate().find_map(|(y, line)| {
-        line.iter()
-            .enumerate()
-            .find(|(_, item)| p(*item))
-            .map(move |(x, item)| Node {
-                map_item: item,
-                x: x as u16,
-                y: y as u16,
-                nb_step: 0,
-            })
-    })
-}
-
-
 pub fn puzzle(context: &Context, lines: &Vec<String>) {
-    let map = parse(lines);
+    let world = parse(lines);
+    let start = Coord { x: 0, y: -1 };
+    let end = Coord {
+        y: world.height as i16,
+        x: world.width as i16 - 1,
+    };
 
-    if context.is_part(Part::Part1) {
-        let result = build_start(&map, &(|item| item.item_type == Type::END))
-            .and_then(|start| {
-                find_path(&map, start, |item: &MapItem| item.item_type == Type::START)
-            })
-            .unwrap();
-        check_result!(context, result, [31, 528]);
-    } else {
-        let result = build_start(&map, &(|item| item.item_type == Type::END))
-            .and_then(|start| find_path(&map, start, |item| item.height == 0))
-            .unwrap();
-        check_result!(context, result, [29, 522]);
-    }
+    let first_trip = find_path(&world, &start, &end, &0).unwrap();
+    let second_trip = find_path(&world, &end, &start, &first_trip).unwrap();
+    let third_trip = find_path(&world, &start, &end, &second_trip).unwrap();
+    check_result!(context, [first_trip, third_trip], [18, 292, 54, 816]);
 }

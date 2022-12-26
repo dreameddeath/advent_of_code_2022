@@ -1,9 +1,4 @@
-use std::{
-    //collections::{BinaryHeap, HashMap},
-    fmt,
-    hash::Hash,
-    hash::Hasher,
-};
+use std::fmt;
 
 use crate::{
     check_result,
@@ -65,7 +60,7 @@ fn parse(lines: &Vec<String>) -> MapWorld {
     };
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Debug)]
 struct Node<'a> {
     x: u16,
     y: u16,
@@ -73,12 +68,6 @@ struct Node<'a> {
     nb_step: u16,
 }
 
-impl<'a> Hash for Node<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.x.hash(state);
-        self.y.hash(state);
-    }
-}
 
 impl<'a> fmt::Display for Node<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -153,8 +142,6 @@ impl<'a> Key<u16> for Node<'a> {
 
 
 fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P) -> Option<u16> {
-    //let mut best_inserted: HashMap<u16, u16> = HashMap::new();
-    //let mut priority_queue: BinaryHeap<Node> = BinaryHeap::new();
     let mut priority_queue: PriorityQueue<u16,u16, Node> = PriorityQueue::new();
     priority_queue.push(start_pos);
     while let Some(next) = priority_queue.pop() {
@@ -165,15 +152,6 @@ fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P
         for dir in Direction::VALUES.iter() {
             if let Some(to_explore) = get_next_pos(&map, &next, dir) {
                 priority_queue.push(to_explore);
-                /*let key = key(&to_explore);
-                if best_inserted
-                    .get(&key)
-                    .filter(|step| **step <= to_explore.nb_step)
-                    .is_none()
-                {
-                    best_inserted.insert(key, to_explore.nb_step);
-                    priority_queue.push(to_explore);
-                }*/
             }
         }
     }
