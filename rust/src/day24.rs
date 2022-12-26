@@ -1,13 +1,10 @@
 use std::{
-    //collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap},
     fmt,
-    hash::Hash,
-    hash::Hasher,
 };
 
 use crate::{
     check_result,
-    priority_queue::{Cost, PriorityQueue, Key},
     utils::{Context, Part},
 };
 
@@ -73,13 +70,6 @@ struct Node<'a> {
     nb_step: u16,
 }
 
-impl<'a> Hash for Node<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.x.hash(state);
-        self.y.hash(state);
-    }
-}
-
 impl<'a> fmt::Display for Node<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -87,6 +77,18 @@ impl<'a> fmt::Display for Node<'a> {
             "(x:{}, y:{}, h:{}, s:{})",
             self.x, self.y, self.map_item.height, self.nb_step
         )
+    }
+}
+
+impl<'a> Ord for Node<'a> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.nb_step.cmp(&self.nb_step)
+    }
+}
+
+impl<'a> PartialOrd for Node<'a> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        other.nb_step.partial_cmp(&self.nb_step)
     }
 }
 
@@ -135,37 +137,23 @@ fn get_next_pos<'a>(map: &'a MapWorld, curr: &Node, direction: &Direction) -> Op
         });
 }
 
-/*fn key(node: &Node) -> u16 {
+fn key(node: &Node) -> u16 {
     return ((node.y as u16) << 8) | node.x as u16;
-}*/
-
-impl<'a> Cost<u16> for Node<'a> {
-    fn cost(&self) -> u16 {
-        return self.nb_step;
-    }
 }
-
-impl<'a> Key<u16> for Node<'a> {
-    fn key(&self) -> u16 {
-        return ((self.y as u16) << 8) | self.x as u16;
-    }
-}
-
 
 fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P) -> Option<u16> {
-    //let mut best_inserted: HashMap<u16, u16> = HashMap::new();
-    //let mut priority_queue: BinaryHeap<Node> = BinaryHeap::new();
-    let mut priority_queue: PriorityQueue<u16,u16, Node> = PriorityQueue::new();
+    //let mut processed: HashMap<u16,u16> = HashMap::new();
+    let mut best_inserted: HashMap<u16, u16> = HashMap::new();
+    let mut priority_queue: BinaryHeap<Node> = BinaryHeap::new();
     priority_queue.push(start_pos);
     while let Some(next) = priority_queue.pop() {
-        if is_end(next.map_item) {
+        if is_end(&next.map_item) {
             return Option::Some(next.nb_step);
         }
 
         for dir in Direction::VALUES.iter() {
             if let Some(to_explore) = get_next_pos(&map, &next, dir) {
-                priority_queue.push(to_explore);
-                /*let key = key(&to_explore);
+                let key = key(&to_explore);
                 if best_inserted
                     .get(&key)
                     .filter(|step| **step <= to_explore.nb_step)
@@ -173,7 +161,7 @@ fn find_path<P: Fn(&MapItem) -> bool>(map: &MapWorld, start_pos: Node, is_end: P
                 {
                     best_inserted.insert(key, to_explore.nb_step);
                     priority_queue.push(to_explore);
-                }*/
+                }
             }
         }
     }
@@ -194,22 +182,19 @@ fn build_start<'a, P: Fn(&'a MapItem) -> bool>(map: &'a MapWorld, p: &'a P) -> O
     })
 }
 
+
 pub fn puzzle(context: &Context, lines: &Vec<String>) {
     let map = parse(lines);
 
     if context.is_part(Part::Part1) {
-        let result = build_start(&map, &(|item| 
-            item.item_type == Type::END
-        ))
+        let result = build_start(&map, &(|item| item.item_type == Type::END))
             .and_then(|start| {
                 find_path(&map, start, |item: &MapItem| item.item_type == Type::START)
             })
             .unwrap();
         check_result!(context, result, [31, 528]);
     } else {
-        let result = build_start(&map, &(|item| 
-            item.item_type == Type::END
-        ))
+        let result = build_start(&map, &(|item| item.item_type == Type::END))
             .and_then(|start| find_path(&map, start, |item| item.height == 0))
             .unwrap();
         check_result!(context, result, [29, 522]);

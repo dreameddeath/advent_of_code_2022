@@ -1,4 +1,7 @@
-use crate::utils::{Part, Dataset};
+use crate::{
+    check_result,
+    utils::{Context, Part},
+};
 pub fn parse(lines: &Vec<String>) -> Vec<i32> {
     return lines
         .into_iter()
@@ -12,7 +15,7 @@ pub fn parse(lines: &Vec<String>) -> Vec<i32> {
         .collect();
 }
 
-pub fn puzzle(part: &Part,set:&Dataset, lines: &Vec<String>) {
+pub fn puzzle(context: &Context, lines: &Vec<String>) {
     let values = parse(lines);
 
     let mut grouped_sum: Vec<i32> = values
@@ -21,13 +24,10 @@ pub fn puzzle(part: &Part,set:&Dataset, lines: &Vec<String>) {
         .collect();
 
     grouped_sum.sort_by(|a, b| b.cmp(a));
-    match part {
-        Part::Part1 => {
-            println!("Result {}", grouped_sum[0])
-        }
-        Part::Part2 => {
-            let total: i32 = grouped_sum.into_iter().take(3).sum();
-            println!("Result {}", total)
-        }
+    if context.is_part(Part::Part1) {
+        check_result!(context, grouped_sum[0], [24000, 74394]);
+    } else {
+        let total: i32 = grouped_sum.into_iter().take(3).sum();
+        check_result!(context, total, [45000, 212836]);
     }
 }

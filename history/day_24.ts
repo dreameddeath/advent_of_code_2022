@@ -1,5 +1,4 @@
 import { Logger, Part, run, Type } from "../day_utils"
-import { ExtendedMap } from "../mapUtils";
 import { PriorityQueue, QueuedItem } from "../priority_queue";
 
 enum ObjectType {
