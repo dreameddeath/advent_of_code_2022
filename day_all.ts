@@ -1,7 +1,7 @@
 
 const start = new Date().getTime();
-import { failures/*,disableTests*/ } from "./day_utils";
-//disableTests();
+import { failures,disableTests } from "./day_utils";
+disableTests();
 import "./history/day_1";
 import "./history/day_2";
 import "./history/day_3";

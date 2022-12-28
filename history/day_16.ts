@@ -35,7 +35,7 @@ function parse(lines: string[]): Map<string, ValveDef> {
         v.connectedTo.forEach(n => v.leadTo.set(n, forcePresent(mapValves.get(n))));
     });
     const valves = [...mapValves.values()];
-    const filterNeededValvePathes = (v:ValveDef):boolean=>v.name==="AA" || v.flowRate>0;
+    const filterNeededValvePathes = (v: ValveDef): boolean => v.name === "AA" || v.flowRate > 0;
     valves.filter(filterNeededValvePathes).forEach(valve => {
         valves.filter(filterNeededValvePathes).filter(t => t.name !== valve.name).forEach(t => valve.shortestPathTo.set(t.name, hasPathTo(valve, t)))
     })
@@ -107,7 +107,7 @@ interface IndexedValue<T> {
 }
 
 function calcPotentialReleased(remainingMinutes: number, pathInfo: ShortestPathInfo): number {
-    return Math.max(0, (remainingMinutes - pathInfo.path.length)) * pathInfo.target.flowRate;
+    return Math.max(0, (remainingMinutes - pathInfo.path.length - 1)) * pathInfo.target.flowRate;
 }
 
 function toIndexed<T>(t: T, i: number): IndexedValue<T> {
@@ -214,16 +214,18 @@ interface BestOutcome {
 }
 
 type Context = {
+    nbDualOpened: number;
     skippedByReleased: number;
     bestReleased: number;
+    nbExplored: number;
 }
 
-function createNewState(origState: State, targets: IndexedValue<WeightedNextToVisit>[]): State {
+function createNewState(origState: State, targets: IndexedValue<WeightedNextToVisit>[], context: Context): State {
     const newState = cloneState(origState, targets);
     //Forward to nextTarget
     const minDistance = newState.agentsState.filter(a => !a.finished).map((a) => a.distanceToTarget).sort((a, b) => a - b)[0];
     advanceMinutes(newState, minDistance);
-    openReachedNodes(newState);
+    openReachedNodes(newState, context);
     calcOptimisticReleased(newState);
     return newState;
 }
@@ -256,7 +258,7 @@ function buildNextPossibleStates(state: State, cache: Context): State[] {
     const nextTuples = setupPairsIntermediate(targetsToExplore);
     const result: State[] = []
     for (const tuple of nextTuples) {
-        const newState = createNewState(state, tuple);
+        const newState = createNewState(state, tuple, cache);
         if (newState.potentialReleased > cache.bestReleased) {
             result.push(newState);
         } else {
@@ -264,17 +266,20 @@ function buildNextPossibleStates(state: State, cache: Context): State[] {
         }
     }
     if (result.length === 0 && state.notAlreadyTargeted.length === 0 && state.agentsState.filter(a => !a.finished).length > 0) {
-        const newState = createNewState(state, []);
+        const newState = createNewState(state, [], cache);
         result.push(newState);
     }
 
     return result;
 }
 
-function openReachedNodes(state: State) {
+function openReachedNodes(state: State, cache: Context) {
     const toOpen = state.agentsState.filter(a => !a.finished).map(toIndexed)
         .filter(item => item.v.distanceToTarget === 0);
     advanceMinutes(state, 1);
+    if (toOpen.length === 2) {
+        cache.nbDualOpened++;
+    }
     toOpen
         .forEach(agentRef => {
             const targetReached = agentRef.v.currPath.pathInfo.target;
@@ -286,11 +291,17 @@ function openReachedNodes(state: State) {
         });
 }
 
-function explore(state: State, cache: Context): BestOutcome | undefined {
+function explore(state: State, cache: Context, logger: Logger): BestOutcome | undefined {
+    cache.nbExplored++;
+    logState(logger, state, cache);
     const nextStates = buildNextPossibleStates(state, cache);
     if (nextStates.length === 0) {
         const finalState = cloneState(state, []);
         advanceMinutes(finalState, state.remainingMinutes);
+        cache.nbExplored++;
+        logState(logger, finalState, cache);
+    
+        
         cache.bestReleased = Math.max(cache.bestReleased, finalState.released);
         return {
             released: finalState.released,
@@ -299,7 +310,7 @@ function explore(state: State, cache: Context): BestOutcome | undefined {
     else {
         let currBestOutCome: BestOutcome | undefined = undefined;
         for (const nextState of nextStates) {
-            const output = explore(nextState, cache);
+            const output = explore(nextState, cache, logger);
             if (output === undefined) {
                 continue;
             }
@@ -312,12 +323,21 @@ function explore(state: State, cache: Context): BestOutcome | undefined {
 }
 
 
+function logState(logger: Logger, state: State, cache:Context) {
+    if (logger.isdebug()) {
+        const str = `Exploring ${cache.bestReleased} / ${state.remainingMinutes} # ${state.released} / ${state.agentsState[0].currPath.pathInfo.target.name} # ${state.agentsState[1]?.currPath?.pathInfo?.target?.name} / ${state.notAlreadyTargeted}`;
+        logger.debug(str);
+    }
+}
+
 function maximizeDfs(start: ValveDef, world: ValveDef[], maxDuration: number, isDebug: boolean, nbAgents: number, logger: Logger): BestOutcome {
     const toVisit = world.filter(v => v.flowRate !== 0).sort((a, b) => a.flowRate - b.flowRate).map(v => v.name).filter(n => n !== start.name);
     const maxRate = world.map(v => v.flowRate).reduce((a, b) => a + b);
     const cache: Context = {
         bestReleased: 0,
         skippedByReleased: 0,
+        nbExplored: 1,
+        nbDualOpened: 0,
     }
     const fakeTarget: WeightedNextToVisit = {
         potentialReleased: 0,
@@ -340,15 +360,15 @@ function maximizeDfs(start: ValveDef, world: ValveDef[], maxDuration: number, is
     calcOptimisticReleased(initialState);
 
     const initialTargets = orderedNextToOpen(start, maxDuration, toVisit);
-    const nextStates = setupPairs(initialTargets, nbAgents).map(targets => createNewState(initialState, targets.map(toIndexed)));
+    const nextStates = setupPairs(initialTargets, nbAgents).map(targets => createNewState(initialState, targets.map(toIndexed), cache));
     const results: BestOutcome[] = [];
     for (const nextState of nextStates) {
-        const outcome = explore(nextState, cache);
+        const outcome = explore(nextState, cache, logger);
         if (outcome !== undefined) {
             results.push(outcome);
         }
     }
-
+    logger.log(`Nb explored ${cache.nbExplored} / ${cache.skippedByReleased} / ${cache.nbDualOpened}`)
     return results.sort((a, b) => b.released - a.released)[0]
 }
 
@@ -363,4 +383,4 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
     logger.result([bestPart1.released, bestPart2.released], [1651, 2029, 1707, 2723])
 }
 
-run(16, [Type.TEST, Type.RUN], puzzle, [Part.ALL])
+run(16, [Type.TEST, Type.RUN], puzzle, [Part.ALL],{debug:false})

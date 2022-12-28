@@ -95,7 +95,7 @@ pub fn read_lines(
     };
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq,Clone, Copy)]
 pub enum Mode {
     STANDARD,
     BENCH,
@@ -306,6 +306,24 @@ pub struct RunOption {
     active: Option<bool>,
     mode: Option<Mode>,
     debug: Option<bool>,
+}
+
+impl RunOption{
+    pub fn new()-> RunOption{
+        RunOption{
+            debug:None,
+            mode:None,
+            active:None
+        }
+    }
+    #[allow(dead_code)]
+    pub fn debug(&self)->RunOption{
+        RunOption{
+            debug:Some(true),
+            mode:self.mode,
+            active:self.active
+        }
+    }
 }
 
 pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: Option<RunOption>) {
