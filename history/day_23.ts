@@ -1,6 +1,3 @@
-import fi from "date-fns/esm/locale/fi/index.js";
-import { el } from "date-fns/locale";
-import { boolean, number } from "yargs";
 import { Logger, Part, run, Type } from "../day_utils"
 import { ExtendedMap } from "../mapUtils";
 import { generator } from "../utils";
@@ -50,7 +47,6 @@ function parse(lines: string[]): World {
 
 type Direction = "north" | "south" | "east" | "west";
 type Predicate = (coord: readonly [number, number]) => boolean;
-const allDirections: Direction[] = ["north", "south", "west", "east"];
 
 const allPossibleOffsets = [-1, 0, 1].flatMap(yOffset => [-1, 0, 1].filter(xOffset => !(xOffset === 0 && yOffset === 0)).map(xOffset => [xOffset, yOffset] as const));
 const northSlotPredicate: Predicate = ([x, y]) => (y === -1)

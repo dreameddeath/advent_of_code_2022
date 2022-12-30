@@ -42,7 +42,7 @@ fn parse(lines: &Vec<String>) -> Vec<ValveDef> {
 }
 
 struct Graph<'a> {
-    map: &'a HashMap<u8, ValveDef>,
+    map: &'a Vec<ValveDef>,
     map_id: &'a HashMap<String, u8>,
     valves_to_open: Vec<u8>,
     paths: HashMap<(u8, u8), PathInfo>,
@@ -72,7 +72,7 @@ impl<'a> Key<&'a String> for FindPathState<'a> {
 fn find_sortest_path<'a>(
     from: &'a ValveDef,
     to: &'a ValveDef,
-    all_valves: &'a HashMap<u8, ValveDef>,
+    all_valves: &'a Vec<ValveDef>,
     map_id: &'a HashMap<String, u8>,
 ) -> PathInfo {
     let mut priority_queue: PriorityQueue<u16, &'a String, FindPathState> = PriorityQueue::new();
@@ -89,7 +89,7 @@ fn find_sortest_path<'a>(
         }
         for link in &s.curr.connected_to {
             priority_queue.push(FindPathState {
-                curr: all_valves.get(map_id.get(link).unwrap()).unwrap(),
+                curr: &all_valves[*map_id.get(link).unwrap() as usize],
                 distance: s.distance + 1,
             })
         }
@@ -132,7 +132,7 @@ fn advance_minutes(state: &mut State, nb: i16) {
 }
 
 fn open_reached_node_for_id(state: &mut State, id: u8, graph: &Graph) {
-    let valve = graph.map.get(&id).unwrap();
+    let valve = &graph.map[id as usize];
     state.cumul_flow_rate += valve.flow_rate;
 }
 
@@ -244,7 +244,7 @@ fn get_valves_to_visit<'a>(
             id: *t,
             agent: *ref_agent,
             path_info,
-            potential_released: graph.map.get(t).unwrap().flow_rate
+            potential_released: graph.map[*t as usize].flow_rate
                 * std::cmp::max((state.remaining_minutes - path_info.distance - 1) as u16, 0),
         })
         .collect();
@@ -286,7 +286,7 @@ fn calc_potential_released(state: &State, graph: &Graph) -> u16 {
                     0
                 } else {
                     std::cmp::max((state.remaining_minutes - mins - 1) as u16, 0)
-                        * graph.map.get(t).unwrap().flow_rate
+                        * graph.map[*t as usize].flow_rate
                 }
             })
             .sum::<u16>();
@@ -460,7 +460,7 @@ fn explore(
         let not_opened: Vec<&String> = state
             .valves_to_open
             .iter()
-            .map(|t| &graph.map.get(&t).unwrap().name)
+            .map(|t| &graph.map[*t as usize].name)
             .collect();
         log!(
             debug,
@@ -469,8 +469,8 @@ fn explore(
             dfs_context.best_released,
             state.remaining_minutes,
             state.released,
-            graph.map.get(&state.agents.0.target_id).unwrap().name,
-            graph.map.get(&state.agents.1.target_id).unwrap().name,
+            graph.map[state.agents.0.target_id as usize].name,
+            graph.map[state.agents.1.target_id as usize].name,
             not_opened
         );
     }
@@ -495,7 +495,7 @@ fn dfs_max_release(
     is_second_part: bool,
     context: &Context,
 ) -> u16 {
-    let start = graph.map.get(graph.map_id.get("AA").unwrap()).unwrap().id;
+    let start = graph.map[*graph.map_id.get("AA").unwrap() as usize].id;
     let init_state: State = State {
         agents: (
             AgentState {
@@ -536,10 +536,10 @@ fn dfs_max_release(
 }
 
 pub fn puzzle(context: &Context, lines: &Vec<String>) {
-    let map: HashMap<u8, ValveDef> = parse(lines).into_iter().map(|v| (v.id, v)).collect();
+    let map: Vec<ValveDef> = parse(lines).into_iter().collect();
     let map_id: HashMap<String, u8> = map
         .iter()
-        .map(|(_, v)| (v.name.to_string(), v.id))
+        .map(|v| (v.name.to_string(), v.id))
         .collect();
     let map_path = build_paths_map(&map, &map_id);
     let graph = Graph {
@@ -559,24 +559,24 @@ pub fn puzzle(context: &Context, lines: &Vec<String>) {
     );
 }
 
-fn get_valves_map_to_open(map: &HashMap<u8, ValveDef>) -> Vec<u8> {
-    map.values()
+fn get_valves_map_to_open(map: &Vec<ValveDef>) -> Vec<u8> {
+    map.iter()
         .filter(|v| v.flow_rate > 0)
         .map(|v| v.id)
         .collect()
 }
 
 fn build_paths_map(
-    map: &HashMap<u8, ValveDef>,
+    list: &Vec<ValveDef>,
     map_id: &HashMap<String, u8>,
 ) -> HashMap<(u8, u8), PathInfo> {
-    return map
-        .values()
+    return list
+        .iter()
         .filter(|a| a.flow_rate > 0 || a.name == "AA")
         .flat_map(|v| {
-            map.values()
+            list.iter()
                 .filter(|a| a.flow_rate > 0)
-                .map(|v2| ((v.id, v2.id), find_sortest_path(v, v2, map, map_id)))
+                .map(|v2| ((v.id, v2.id), find_sortest_path(v, v2, list, map_id)))
         })
         .collect();
 }
