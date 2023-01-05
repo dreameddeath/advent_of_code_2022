@@ -38,7 +38,7 @@ function parse(lines: string[]): Monkey[] {
                 operation: parseOperation(monckeyData[2]),
                 test: testCond,
                 condModulus: condModulus,
-            }
+            } satisfies Monkey
         });
 }
 

@@ -136,26 +136,24 @@ pub struct Context {
 }
 
 impl Context {
-    fn new_part(day: &u8, options: &Option<RunOption>, part: Part, data_set: &Dataset) -> Context {
+    fn new_part(day: &u8, options: &RunOption, part: Part, data_set: &Dataset) -> Context {
         return Context::new(day, options, Some(part), data_set);
     }
 
-    fn new_all(day: &u8, options: &Option<RunOption>, data_set: &Dataset) -> Context {
+    fn new_all(day: &u8, options: &RunOption, data_set: &Dataset) -> Context {
         return Context::new(day, options, None, data_set);
     }
 
     fn new(
         day: &u8,
-        options: &Option<RunOption>,
+        options: &RunOption,
         part: Option<Part>,
         data_set: &Dataset,
     ) -> Context {
-        let log_level = options
-            .as_ref()
-            .and_then(|d| d.debug.as_ref())
+        let log_level = options.debug.as_ref()
             .map(|d| if *d { LogLevel::DEBUG } else { LogLevel::INFO })
             .unwrap_or(LogLevel::INFO);
-        let is_debug = options.as_ref().and_then(|d| d.debug).unwrap_or(false);
+        let is_debug = options.debug.unwrap_or(false);
         return Context {
             log_level: log_level,
             day: *day,
@@ -309,11 +307,23 @@ pub struct RunOption {
 }
 
 impl RunOption{
+    pub fn default()->RunOption{
+        RunOption::new()
+    }
     pub fn new()-> RunOption{
         RunOption{
             debug:None,
             mode:None,
             active:None
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn disabled()-> RunOption{
+        RunOption{
+            debug:None,
+            mode:None,
+            active:Some(false)
         }
     }
     #[allow(dead_code)]
@@ -326,14 +336,14 @@ impl RunOption{
     }
 }
 
-pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: Option<RunOption>) {
-    if !options.as_ref().and_then(|d| d.active).unwrap_or(true) {
+pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOption) {
+    if !options.active.unwrap_or(true) {
         return;
     }
     let mode = options
-        .as_ref()
-        .and_then(|d| d.mode.as_ref())
+        .mode.as_ref()
         .unwrap_or(&Mode::STANDARD);
+    let start = Instant::now();
 
     println!("");
     println!("");
@@ -366,20 +376,24 @@ pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: Option
         &to_lines(day, Some(Part::Part2), &Dataset::Real),
         mode,
     );
+    println!("");
+    
+    println!("[Day {}] done in {} ms", day,start.elapsed().as_millis() as u64);
+
 }
 
 pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(
     day: &u8,
     fct: &F,
-    options: Option<RunOption>,
+    options: RunOption,
 ) {
-    if !options.as_ref().and_then(|d| d.active).unwrap_or(true) {
+    if !options.active.unwrap_or(true) {
         return;
     }
     let mode = options
-        .as_ref()
-        .and_then(|d| d.mode.as_ref())
+        .mode.as_ref()
         .unwrap_or(&Mode::STANDARD);
+    let start = Instant::now();
     println!("");
     println!("");
     println!("[Day {}] run global", day);
@@ -396,6 +410,9 @@ pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(
         &to_lines(day, None, &Dataset::Real),
         mode,
     );
+    println!("");
+    println!("[Day {}] done in {} ms", day,start.elapsed().as_millis() as u64);
+
 }
 
 #[allow(dead_code)]

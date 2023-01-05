@@ -40,8 +40,8 @@ export function getData(day: number, type: Type, part: Part, logger: Logger): st
 
 export interface Logger {
     isdebug(): boolean,
-    debug(message: string): void,
-    log(message: string): void,
+    debug(message: string|(()=>string)): void,
+    log(message: string|(()=>string)): void,
     error(message: string): void,
     result<T>(value: T|[T,T], testResult?: T | [T, T]|[T,T,T,T]): void,
 }
@@ -102,7 +102,8 @@ export function disableTests() {
     _disableTests = true;
 }
 export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: Part[] = [Part.ALL], opt?: { bench?: boolean, debug?: boolean, benchTags?: BTAG[] }): void {
-    console.log(`[RUNNING] Day ${day}`);
+    console.log(`[STARTING] Day ${day}`);
+    const start = new Date();
     parts.forEach(part => {
         types.forEach(type => {
             if (_disableTests && type == Type.TEST) {
@@ -127,14 +128,17 @@ export function run<BTAG>(day: number, types: Type[], fct: Solver<BTAG>, parts: 
                 logger.log(`Done in ${duration} ms`)
             }
         })
-    })
+    });
+
+    console.log(`[DONE] Day ${day} done in ${(new Date()).getTime() - start.getTime()} ms`);
+    
 }
 
 function buildLogger(day: number, debugMode: boolean | undefined, part: Part, type: Type): Logger {
     const name = Type[type];
     return {
         isdebug: debugMode ? (() => true) : (() => false),
-        debug: debugMode ? ((message: string) => console.log(`[${name}][${part}] ${message}`)) : (() => { }),
+        debug: debugMode ? ((message: string|(()=>string)) => console.log(`[${name}][${part}] ${typeof message === "function"?message():message}`)) : (() => { }),
         log: (message: string) => console.log(`[${name}][${part}] ${message}`),
         error: (message: string) => console.error(`[${name}][${part}] ${message}`),
         result: <T>(value: T | [T, T], result?: T | [T, T] | [T, T, T, T]) => {

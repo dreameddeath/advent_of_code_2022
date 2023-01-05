@@ -1,3 +1,4 @@
+import { exit } from "process";
 import { Logger, Part, run, Type } from "../day_utils"
 import { ExtendedMap } from "../mapUtils";
 import { forcePresent } from "../utils";
@@ -60,8 +61,9 @@ interface BestOutcome {
 }
 
 type Cache = {
-    map: ExtendedMap<string, BestOutcome[]>,
+    nbSkipped: number;
     bestProduced: number,
+    nbExplored:number,
     maxProductionRatePerType: [number, number, number, number]
 }
 
@@ -95,7 +97,7 @@ function calcTimeToProduceNext(requirements: Requirements, state: State, cache: 
 }
 
 
-function advanceState(requirements: Requirements, state: State, duration: number, producerToIncrease: number): State {
+function advanceState(requirements: Requirements|undefined, state: State, duration: number, producerToIncrease: number|undefined): State {
     const newState: State = {
         remainingMinutes: state.remainingMinutes - duration,
         minutes: state.minutes + duration,
@@ -106,9 +108,11 @@ function advanceState(requirements: Requirements, state: State, duration: number
         newState.stock[pos] += duration * state.productionRates[pos];
     }
 
-    newState.productionRates[producerToIncrease]++;
-    for (let pos = 0; pos < newState.stock.length; ++pos) {
-        newState.stock[pos] -= requirements[pos];
+    if(producerToIncrease!==undefined && requirements!==undefined){
+        newState.productionRates[producerToIncrease]++;
+        for (let pos = 0; pos < newState.stock.length; ++pos) {
+            newState.stock[pos] -= requirements[pos];
+        }
     }
     return newState;
 }
@@ -132,6 +136,7 @@ function calcNextPossibleStates(blueprint: Blueprint, state: State, cache: Cache
     for (let typeProducer = blueprint.length - 1; typeProducer >= 0; --typeProducer) {
         const requirements = blueprint[typeProducer];
         if (state.productionRates[typeProducer] >= cache.maxProductionRatePerType[typeProducer]) {
+            cache.nbSkipped++;
             continue;
         }
         const nextDuration = calcTimeToProduceNext(requirements, state, cache);
@@ -142,6 +147,8 @@ function calcNextPossibleStates(blueprint: Blueprint, state: State, cache: Cache
                 const nextState = advanceState(requirements, state, nextDuration + 1, typeProducer);
                 if (bestOptimisticOutcome(nextState) > cache.bestProduced) {
                     result.push(nextState);
+                }else{
+                    cache.nbSkipped++;
                 }
             }
         }
@@ -170,30 +177,9 @@ function calcNextGeodeProductionChange(durationOffset: number, increaseProductio
     ...remaining];
 }
 
-function calcBestOutcome(blueprint: Blueprint, state: State, cache: Cache): { producedGeodes: number, bestOutcome: BestOutcome } {
-    const key = state.stock.join("|") + "#" + state.productionRates.join("|");
-    const outcomes = cache.map.cache(key, () => []);
-    const needProcessing = outcomes.length === 0 || state.remainingMinutes > outcomes[outcomes.length - 1].maxRemainingMinutes;
-    if (!needProcessing) {
-        for (let pos = 0; pos < outcomes.length; ++pos) {
-            const outcome = outcomes[pos];
-            if (state.remainingMinutes <= outcome.maxRemainingMinutes) {
-                const newNextGeod = calcNextGeodeProductionChange(0, false, outcome);
-                const produced = calcProduction(state, newNextGeod);
-                cache.bestProduced = Math.max(cache.bestProduced, produced);
-                return {
-                    bestOutcome: {
-                        geodesProducerCreated: newNextGeod,
-                        maxRemainingMinutes: outcome.maxRemainingMinutes,
-                        states: [state, ...outcome.states]
-                    },
-                    producedGeodes: produced
-                }
-            }
-        }
-        throw new Error("Shouldn't occurs");
-    }
-
+function calcBestOutcome(blueprint: Blueprint, state: State, cache: Cache,depth:number): { producedGeodes: number, bestOutcome: BestOutcome } {
+    cache.nbExplored++;
+    const outcomes:BestOutcome[] = [];
     const nextStates = calcNextPossibleStates(blueprint, state, cache);
     let currBestOutcomeForNextStates: NextGeodProducerIncrease | undefined;
     let maxMinutesApplicableForOutcome = -1;
@@ -201,10 +187,10 @@ function calcBestOutcome(blueprint: Blueprint, state: State, cache: Cache): { pr
     let bestOutComeStates: State[] = [];
     for (const nextState of nextStates.states) {
         const durationOffset = state.remainingMinutes - nextState.remainingMinutes;
-        const { bestOutcome } = calcBestOutcome(blueprint, nextState, cache);
+        const { bestOutcome } = calcBestOutcome(blueprint, nextState, cache,depth+1);
         const newNextGeod = calcNextGeodeProductionChange(durationOffset, state.productionRates[GEODE_POS] < nextState.productionRates[GEODE_POS], bestOutcome);
         let nbGeodProduced = calcProduction(state, newNextGeod);
-        if (nbGeodProduced > currBestProduceGeod) {
+        if (nbGeodProduced > currBestProduceGeod || currBestOutcomeForNextStates===undefined) {
             currBestProduceGeod = nbGeodProduced;
             bestOutComeStates = bestOutcome.states;
             maxMinutesApplicableForOutcome = durationOffset + bestOutcome.maxRemainingMinutes;
@@ -225,6 +211,7 @@ function calcBestOutcome(blueprint: Blueprint, state: State, cache: Cache): { pr
             maxRemainingMinutes: nextStates.maxMinutes,
             states: [state]
         }
+        cache.nbExplored++;
         currBestProduceGeod = calcProduction(state, newBestOutcome.geodesProducerCreated);
     }
     outcomes.push(newBestOutcome);
@@ -278,8 +265,9 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
         let total = 0;
         for (let pos = 0; pos < data.length; ++pos) {
             const cache: Cache = {
-                map: new ExtendedMap(),
                 bestProduced: 0,
+                nbExplored:0,
+                nbSkipped:0,
                 maxProductionRatePerType: calcMaxProductionRate(data[pos])
             }
             const result = calcBestOutcome(data[pos], {
@@ -287,12 +275,11 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
                 remainingMinutes: 24,
                 minutes: 0,
                 stock: [0, 0, 0, 0]
-            }, cache);
-            logger.debug(`Result ${result.producedGeodes} for ${pos + 1} with ${cache.map.size} explored`)
+            }, cache,0);
+            logger.debug(()=>`Result ${result.producedGeodes} for ${pos + 1} with ${cache.nbExplored} explored / ${cache.nbSkipped} skipped`);
             total += result.producedGeodes * (pos + 1);
         }
 
-        //const result = data.length;
         logger.result(total, [33, 1599])
     }
     else {
@@ -300,8 +287,9 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
         const nbElements = Math.min(3, data.length);
         for (let pos = 0; pos < nbElements; ++pos) {
             const cache: Cache = {
-                map: new ExtendedMap(),
                 bestProduced: 0,
+                nbExplored:0,
+                nbSkipped:0,
                 maxProductionRatePerType: calcMaxProductionRate(data[pos])
             }
             const result = calcBestOutcome(data[pos], {
@@ -309,8 +297,8 @@ function puzzle(lines: string[], part: Part, type: Type, logger: Logger): void {
                 remainingMinutes: 32,
                 minutes: 0,
                 stock: [0, 0, 0, 0]
-            }, cache);
-            logger.debug(`Result ${result.producedGeodes} for ${pos + 1} with ${cache.map.size} explored`)
+            }, cache,0);
+            logger.debug(()=>`Result ${result.producedGeodes} for ${pos + 1} with ${cache.nbExplored} explored / ${cache.nbSkipped} skipped`);
             total *= result.producedGeodes;
         }
 
