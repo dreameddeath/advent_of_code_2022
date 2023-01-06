@@ -150,9 +150,7 @@ impl Context {
         part: Option<Part>,
         data_set: &Dataset,
     ) -> Context {
-        let log_level = options.debug.as_ref()
-            .map(|d| if *d { LogLevel::DEBUG } else { LogLevel::INFO })
-            .unwrap_or(LogLevel::INFO);
+        let log_level = options.get_log_level();
         let is_debug = options.debug.unwrap_or(false);
         return Context {
             log_level: log_level,
@@ -300,49 +298,85 @@ pub fn to_lines(day: &u8, part: Option<Part>, data_set: &Dataset) -> Vec<String>
         .unwrap_or(vec![]);
 }
 
-pub struct RunOption {
+pub type DaysRestriction<'a> = &'a Option<Vec<u8>>;
+pub struct RunOption<'a> {
     active: Option<bool>,
     mode: Option<Mode>,
     debug: Option<bool>,
+    days_restriction:DaysRestriction<'a>
 }
 
-impl RunOption{
-    pub fn default()->RunOption{
-        RunOption::new()
+impl<'a> RunOption<'a>{
+    pub fn default(days_restriction:DaysRestriction<'a>)->RunOption<'a>{
+        RunOption::new(days_restriction)
     }
-    pub fn new()-> RunOption{
+    pub fn new(days_restriction:DaysRestriction<'a>)-> RunOption<'a>{
         RunOption{
             debug:None,
             mode:None,
-            active:None
+            active:None,
+            days_restriction,
         }
     }
 
     #[allow(dead_code)]
-    pub fn disabled()-> RunOption{
+    pub fn disabled()-> RunOption<'a>{
         RunOption{
             debug:None,
             mode:None,
-            active:Some(false)
+            active:Some(false),
+            days_restriction:&None,
         }
     }
     #[allow(dead_code)]
-    pub fn debug(&self)->RunOption{
+    pub fn debug(&self)->RunOption<'a>{
         RunOption{
             debug:Some(true),
             mode:self.mode,
-            active:self.active
+            active:self.active,
+            days_restriction:self.days_restriction
         }
     }
+
+    fn is_active(&self,day:&u8)->bool{
+        if !self.active.unwrap_or(true) {
+            return false;
+        }
+
+        if let Some(days_restricted) = self.days_restriction{
+            if !days_restricted.contains(day) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    fn get_mode(&self)->&Mode{
+        self
+        .mode.as_ref()
+        .unwrap_or(&Mode::STANDARD)
+    }
+
+    fn get_log_level(&self)->LogLevel{
+        if self.is_debug() {
+            LogLevel::DEBUG
+        } else {
+            LogLevel::INFO
+        }
+    }
+
+    fn is_debug(&self)->bool{
+        self.debug.unwrap_or(false)
+    }
+
 }
 
 pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOption) {
-    if !options.active.unwrap_or(true) {
+    if !options.is_active(day) {
         return;
     }
-    let mode = options
-        .mode.as_ref()
-        .unwrap_or(&Mode::STANDARD);
+
+    let mode = options.get_mode();
     let start = Instant::now();
 
     println!("");
@@ -387,12 +421,10 @@ pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(
     fct: &F,
     options: RunOption,
 ) {
-    if !options.active.unwrap_or(true) {
+    if !options.is_active(day) {
         return;
     }
-    let mode = options
-        .mode.as_ref()
-        .unwrap_or(&Mode::STANDARD);
+    let mode = options.get_mode();
     let start = Instant::now();
     println!("");
     println!("");

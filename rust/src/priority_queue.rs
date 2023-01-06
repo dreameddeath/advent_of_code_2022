@@ -1,7 +1,9 @@
 use std::{
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap},
     hash::Hash,
 };
+
+use rustc_hash::FxHashMap;
 
 pub trait Cost<C> {
     fn cost(&self) -> C;
@@ -38,7 +40,7 @@ impl<C: Ord + PartialOrd, K, T> PartialOrd for Wrapper<C, K, T> {
 }
 
 pub struct PriorityQueue<C: Ord + Copy + Clone, K: Hash + Copy + Clone, T: Cost<C> + Key<K>> {
-    best_inserted: HashMap<K, C>,
+    best_inserted: FxHashMap<K, C>,
     queue: BinaryHeap<Wrapper<C,K, T>>,
 }
 
@@ -48,7 +50,7 @@ impl<C: Ord + Copy + Clone, K: Hash + Eq + Copy + Clone, T: Cost<C> + Key<K>>
     pub fn new() -> PriorityQueue<C, K, T> {
         return PriorityQueue {
             queue: BinaryHeap::new(),
-            best_inserted: HashMap::new(),
+            best_inserted: FxHashMap::default(),
         };
     }
 

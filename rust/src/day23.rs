@@ -1,7 +1,8 @@
 use std::{
-    collections::HashSet,
-    hash::{Hash, Hasher},
+    hash::{Hash}
 };
+
+use rustc_hash::FxHashSet;
 
 use crate::{
     check_result, log,
@@ -13,6 +14,7 @@ struct Coord {
     x: i16,
     y: i16,
 }
+
 
 static OFFSETS: [Coord; 8] = [
     Coord { x: -1, y: -1 },
@@ -38,11 +40,6 @@ impl Elf {
     }
 }
 
-impl Hash for Elf {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.coord.hash(state);
-    }
-}
 
 impl PartialEq for Elf {
     fn eq(&self, other: &Self) -> bool {
@@ -53,7 +50,7 @@ impl PartialEq for Elf {
 impl Eq for Elf {}
 
 struct Map {
-    used_coord: HashSet<Coord>,
+    used_coord: FxHashSet<Coord>,
     elves: Vec<Elf>,
     max_size: usize,
 }
@@ -129,7 +126,7 @@ static ALL_DIRECTIONS: [DirectionList; 4] = [
 impl Map {
     fn new() -> Map {
         Map {
-            used_coord: HashSet::new(),
+            used_coord: FxHashSet::default(),
             elves: vec![],
             max_size: 0,
         }
@@ -147,10 +144,10 @@ impl Map {
         self.elves.push(elf);
     }
 
-    fn move_elves_v2<'b>(&'b mut self, direction_list: &DirectionList) -> usize {
-        let mut to_try_move: Vec<(Coord, &mut Elf)> = Vec::with_capacity(self.max_size);
+    fn move_elves_v3(&mut self, direction_list: &DirectionList,to_try_move:&mut Vec<(Coord,usize)>) -> usize {
         let mut offsets: Vec<&Coord> = Vec::with_capacity(8);
-        for elf in &mut self.elves {
+        to_try_move.clear();
+        for (pos,elf) in self.elves.iter().enumerate() {
             offsets.clear();
             for offset in &OFFSETS {
                 if !self.used_coord.contains(&Coord {
@@ -165,7 +162,7 @@ impl Map {
             }
             for direction in direction_list {
                 if direction.can_move_toward(&offsets) {
-                    to_try_move.push((direction.new_coord(elf), elf));
+                    to_try_move.push((direction.new_coord(elf), pos));
                     break;
                 }
             }
@@ -189,13 +186,14 @@ impl Map {
                     continue;
                 }
             }
-            let tuple = &mut to_try_move[pos];
-            self.used_coord.remove(&tuple.1.coord);
-            tuple.1.coord.x = tuple.0.x;
-            tuple.1.coord.y = tuple.0.y;
+            let (coord,elf_pos) = &to_try_move[pos];
+            let elf = &mut self.elves[*elf_pos];
+            self.used_coord.remove(&elf.coord);
+            elf.coord.x = coord.x;
+            elf.coord.y = coord.y;
             self.used_coord.insert(Coord {
-                x: tuple.0.x,
-                y: tuple.0.y,
+                x: coord.x,
+                y: coord.y,
             });
             pos += 1;
             nb_move += 1;
@@ -263,25 +261,26 @@ fn calc_free_slots(map: &Map) -> i32 {
     calc_size(&min_max) - map.elves.len() as i32
 }
 
-fn iterate(map: &mut Map, id: i32) -> usize {
+fn iterate(map: &mut Map, id: i32,temps:&mut Vec<(Coord,usize)>) -> usize {
     let direction_list = &ALL_DIRECTIONS[(id as usize) % ALL_DIRECTIONS.len()];
-    map.move_elves_v2(direction_list)
+    map.move_elves_v3(direction_list,temps)
 }
 
 pub fn puzzle(context: &Context, lines: &Vec<String>) {
     let mut map = parse(lines);
+    let mut temp_movable:Vec<(Coord,usize)>=Vec::with_capacity(map.elves.len());
     if context.is_part(Part::Part1) {
         print(&map, context);
 
         for i in 0..10 {
-            iterate(&mut map, i);
+            iterate(&mut map, i,&mut temp_movable);
             print(&map, context);
         }
         let result = calc_free_slots(&map);
         check_result!(context, result, [110, 4172]);
     } else {
         let mut id = 0;
-        while iterate(&mut map, id) > 0 {
+        while iterate(&mut map, id,&mut temp_movable) > 0 {
             id += 1;
         }
         check_result!(context, id + 1, [20, 942]);
