@@ -1,5 +1,5 @@
 use regex::{Captures, Regex};
-
+use lazy_static::lazy_static;
 use crate::{
     check_result, log,
     utils::{Context, Part},
@@ -165,15 +165,18 @@ fn update_requirements(req: &mut Requirements, parse_res: Captures) {
     }
 }
 
+lazy_static! {
+    static ref REGEXP_REQUIREMENT:Regex = Regex::new(r"^Each (?P<rname>\w+) robot costs (?P<req1qty>\d+) (?P<req1name>\w+)(?: and (?P<req2qty>\d+) (?P<req2name>\w+))?\.?$").unwrap();
+    static ref REGEXP_BLUEPRINT:Regex = Regex::new(r"^Blueprint (?P<id>\d+)$").unwrap();
+}
+
 fn parse(lines: &Vec<String>) -> Vec<Blueprint> {
-    let re = Regex::new(r"^Each (?P<rname>\w+) robot costs (?P<req1qty>\d+) (?P<req1name>\w+)(?: and (?P<req2qty>\d+) (?P<req2name>\w+))?\.?$").unwrap();
-    let re_blueprint = Regex::new(r"^Blueprint (?P<id>\d+)$").unwrap();
     return lines
         .iter()
         .map(|line| {
             let mut main_parts = line.split(": ");
             let blueprint_descr = main_parts.nth(0).unwrap();
-            let id = re_blueprint
+            let id = REGEXP_BLUEPRINT
                 .captures(blueprint_descr)
                 .unwrap()
                 .name("id")
@@ -184,7 +187,7 @@ fn parse(lines: &Vec<String>) -> Vec<Blueprint> {
             let requirements_str = main_parts.last().unwrap();
             let mut blueprint = Blueprint::init(id);
             for req_str in requirements_str.split(". ") {
-                let c = re.captures(req_str).unwrap();
+                let c = REGEXP_REQUIREMENT.captures(req_str).unwrap();
                 let name = c.name("rname").unwrap().as_str();
                 match name {
                     "ore" => update_requirements(&mut blueprint.requirements.ore, c),

@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::{
@@ -16,14 +16,16 @@ struct ValveDef {
     connected_to: Vec<String>,
 }
 
-fn parse(lines: &Vec<String>) -> Vec<ValveDef> {
-    let re = Regex::new(r"^Valve (?P<name>\w+) has flow rate=(?P<rate>\d+); tunnels? leads? to valves? (?P<list>\w+(?:, \w+)*)$").unwrap();
+lazy_static! {
+    static ref VALVE_PARSE_REGEX:Regex =  Regex::new(r"^Valve (?P<name>\w+) has flow rate=(?P<rate>\d+); tunnels? leads? to valves? (?P<list>\w+(?:, \w+)*)$").unwrap();
+}
 
+fn parse(lines: &Vec<String>) -> Vec<ValveDef> {
     lines
         .into_iter()
         .enumerate()
         .map(|(pos, line)| {
-            let c = re.captures(line).unwrap();
+            let c = VALVE_PARSE_REGEX.captures(line).unwrap();
             ValveDef {
                 id: pos as u8,
                 name: String::from(c.name("name").unwrap().as_str()),
