@@ -18,6 +18,9 @@ log {
 #[macro_export]
 macro_rules! check_result {
     ($ctxt:expr, [$res_p1:expr, $res_p2:expr ], [ $res_p1_test:expr,$res_p1_real:expr, $res_p2_test:expr, $res_p2_real:expr ] ) => {
+        if $ctxt.is_bench() {
+            return;
+        }
         if $ctxt.has_part() {
             panic!("Shoudn't be call in separate run context")
         }
@@ -29,6 +32,10 @@ macro_rules! check_result {
     };
 
     ($ctxt:expr, $res:expr, [ $res1:expr, $res2:expr ] ) => {
+        if $ctxt.is_bench() {
+            return;
+        }
+        
         if !$ctxt.has_part() {
             panic!("Shoudn't be call in mono run context")
         }
@@ -95,7 +102,7 @@ pub fn read_lines(
     };
 }
 
-#[derive(Eq, PartialEq,Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub enum Mode {
     STANDARD,
     BENCH,
@@ -132,6 +139,7 @@ pub struct Context {
     day: u8,
     data_set: Dataset,
     is_debug: bool,
+    is_bench: bool,
     part: Option<Part>,
 }
 
@@ -144,20 +152,17 @@ impl Context {
         return Context::new(day, options, None, data_set);
     }
 
-    fn new(
-        day: &u8,
-        options: &RunOption,
-        part: Option<Part>,
-        data_set: &Dataset,
-    ) -> Context {
+    fn new(day: &u8, options: &RunOption, part: Option<Part>, data_set: &Dataset) -> Context {
         let log_level = options.get_log_level();
         let is_debug = options.debug.unwrap_or(false);
+        let is_bench = options.mode.map(|m|m==Mode::BENCH).unwrap_or(false);
         return Context {
             log_level: log_level,
             day: *day,
             data_set: *data_set,
             part: part,
             is_debug: is_debug,
+            is_bench: is_bench,
         };
     }
 
@@ -197,6 +202,10 @@ impl Context {
         } else {
             false
         };
+    }
+
+    pub fn is_bench(&self)->bool{
+        self.is_bench
     }
 
     pub fn has_part(&self) -> bool {
@@ -244,57 +253,68 @@ impl Context {
 pub fn run<F: Fn(&Context, &Vec<String>)>(
     context: Context,
     fct: &F,
-    lines: &Vec<String>,
+    //lines: &Vec<String>,
     mode: &Mode,
 ) {
     log!(info, &context, "Starting");
+
+    let start_read = Instant::now();
+    let lines = to_lines(&context.day, context.part, &context.data_set);
+    let read_duration = start_read.elapsed().as_millis();
     let nb_max = if *mode == Mode::BENCH { 10 } else { 1 };
     let start = Instant::now();
     let mut count = 0;
     while count < nb_max {
         count += 1;
-        fct(&context, lines);
+        fct(&context, &lines);
     }
     let duration = start.elapsed().as_millis() as u64;
 
     log!(
         info,
         context,
-        "Duration {} ms (avg {} for #{} iterations)",
+        "Duration {} ms (avg {} for #{} iterations) and {} ms for read",
         duration,
         duration as f64 / nb_max as f64,
-        count
+        count,
+        read_duration
     );
 }
 
 pub fn run_simult<F: Fn(&Context, &Vec<String>)>(
     context: Context,
     fct: &F,
-    lines: &Vec<String>,
+    //lines: &Vec<String>,
     mode: &Mode,
 ) {
     log!(info, context, "Starting");
+
+    let start_read = Instant::now();
+    let lines = to_lines(&context.day, None, &context.data_set);
+    let read_duration = start_read.elapsed().as_millis();
+
     let nb_max = if *mode == Mode::BENCH { 10 } else { 1 };
     let start = Instant::now();
     let mut count = 0;
     while count < nb_max {
         count += 1;
-        fct(&context, lines);
+        fct(&context, &lines);
     }
     let duration = start.elapsed().as_millis() as u64;
     log!(
         info,
         context,
-        "Duration {} ms (avg {} for #{} iterations)",
+        "Duration {} ms (avg {} for #{} iterations) and {} for read",
         duration,
         duration as f64 / nb_max as f64,
-        count
+        count,
+        read_duration
     )
 }
 
 pub fn to_lines(day: &u8, part: Option<Part>, data_set: &Dataset) -> Vec<String> {
     return read_lines(day, part, data_set)
-        .map(|lines| lines.filter_map(|l| l.ok()).collect())
+        .map(|lines| lines.map(|l| l.unwrap()).collect())
         .unwrap_or(vec![]);
 }
 
@@ -303,47 +323,57 @@ pub struct RunOption<'a> {
     active: Option<bool>,
     mode: Option<Mode>,
     debug: Option<bool>,
-    days_restriction:DaysRestriction<'a>
+    days_restriction: DaysRestriction<'a>,
 }
 
-impl<'a> RunOption<'a>{
-    pub fn default(days_restriction:DaysRestriction<'a>)->RunOption<'a>{
+impl<'a> RunOption<'a> {
+    pub fn default(days_restriction: DaysRestriction<'a>) -> RunOption<'a> {
         RunOption::new(days_restriction)
     }
-    pub fn new(days_restriction:DaysRestriction<'a>)-> RunOption<'a>{
-        RunOption{
-            debug:None,
-            mode:None,
-            active:None,
+    pub fn new(days_restriction: DaysRestriction<'a>) -> RunOption<'a> {
+        RunOption {
+            debug: None,
+            mode: None,
+            active: None,
             days_restriction,
         }
     }
 
     #[allow(dead_code)]
-    pub fn disabled()-> RunOption<'a>{
-        RunOption{
-            debug:None,
-            mode:None,
-            active:Some(false),
-            days_restriction:&None,
+    pub fn disabled() -> RunOption<'a> {
+        RunOption {
+            debug: None,
+            mode: None,
+            active: Some(false),
+            days_restriction: &None,
         }
     }
     #[allow(dead_code)]
-    pub fn debug(&self)->RunOption<'a>{
-        RunOption{
-            debug:Some(true),
-            mode:self.mode,
-            active:self.active,
-            days_restriction:self.days_restriction
+    pub fn debug(&self) -> RunOption<'a> {
+        RunOption {
+            debug: Some(true),
+            mode: self.mode,
+            active: self.active,
+            days_restriction: self.days_restriction,
         }
     }
 
-    fn is_active(&self,day:&u8)->bool{
+    #[allow(dead_code)]
+    pub fn bench(&self) -> RunOption<'a> {
+        RunOption {
+            active: self.active,
+            mode: Some(Mode::BENCH),
+            debug: self.debug,
+            days_restriction: self.days_restriction,
+        }
+    }
+
+    fn is_active(&self, day: &u8) -> bool {
         if !self.active.unwrap_or(true) {
             return false;
         }
 
-        if let Some(days_restricted) = self.days_restriction{
+        if let Some(days_restricted) = self.days_restriction {
             if !days_restricted.contains(day) {
                 return false;
             }
@@ -351,13 +381,11 @@ impl<'a> RunOption<'a>{
         return true;
     }
 
-    fn get_mode(&self)->&Mode{
-        self
-        .mode.as_ref()
-        .unwrap_or(&Mode::STANDARD)
+    fn get_mode(&self) -> &Mode {
+        self.mode.as_ref().unwrap_or(&Mode::STANDARD)
     }
 
-    fn get_log_level(&self)->LogLevel{
+    fn get_log_level(&self) -> LogLevel {
         if self.is_debug() {
             LogLevel::DEBUG
         } else {
@@ -365,10 +393,9 @@ impl<'a> RunOption<'a>{
         }
     }
 
-    fn is_debug(&self)->bool{
+    fn is_debug(&self) -> bool {
         self.debug.unwrap_or(false)
     }
-
 }
 
 pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOption) {
@@ -386,41 +413,36 @@ pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOpt
     run(
         Context::new_part(day, &options, Part::Part1, &Dataset::Test),
         &fct,
-        &to_lines(day, Some(Part::Part1), &Dataset::Test),
         mode,
     );
     println!("");
     run(
         Context::new_part(day, &options, Part::Part1, &Dataset::Real),
         &fct,
-        &to_lines(day, Some(Part::Part1), &Dataset::Real),
         mode,
     );
     println!("");
     run(
         Context::new_part(day, &options, Part::Part2, &Dataset::Test),
         &fct,
-        &to_lines(day, Some(Part::Part2), &Dataset::Test),
         mode,
     );
     println!("");
     run(
         Context::new_part(day, &options, Part::Part2, &Dataset::Real),
         &fct,
-        &to_lines(day, Some(Part::Part2), &Dataset::Real),
         mode,
     );
     println!("");
-    
-    println!("[Day {}] done in {} ms", day,start.elapsed().as_millis() as u64);
 
+    println!(
+        "[Day {}] done in {} ms",
+        day,
+        start.elapsed().as_millis() as u64
+    );
 }
 
-pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(
-    day: &u8,
-    fct: &F,
-    options: RunOption,
-) {
+pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOption) {
     if !options.is_active(day) {
         return;
     }
@@ -429,22 +451,15 @@ pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(
     println!("");
     println!("");
     println!("[Day {}] run global", day);
-    run_simult(
-        Context::new_all(day, &options, &Dataset::Test),
-        fct,
-        &to_lines(day, None, &Dataset::Test),
-        mode,
-    );
+    run_simult(Context::new_all(day, &options, &Dataset::Test), fct, mode);
     println!("");
-    run_simult(
-        Context::new_all(day, &options, &Dataset::Real),
-        fct,
-        &to_lines(day, None, &Dataset::Real),
-        mode,
-    );
+    run_simult(Context::new_all(day, &options, &Dataset::Real), fct, mode);
     println!("");
-    println!("[Day {}] done in {} ms", day,start.elapsed().as_millis() as u64);
-
+    println!(
+        "[Day {}] done in {} ms",
+        day,
+        start.elapsed().as_millis() as u64
+    );
 }
 
 #[allow(dead_code)]
