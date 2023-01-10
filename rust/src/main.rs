@@ -16,8 +16,8 @@ mod priority_queue;
 
 fn main() {
     let start = Instant::now();
-    let days_restriction:DaysRestriction = &Some(vec![20]);
-    //let days_restriction:DaysRestriction = &None;
+    //let days_restriction:DaysRestriction = &Some(vec![20]);
+    let days_restriction:DaysRestriction = &None;
     utils::run_all(&1, &day1::puzzle, RunOption::default(days_restriction));
     utils::run_all_simult(&2, &day2::puzzle, RunOption::default(days_restriction));
     utils::run_all(&11, &day11::puzzle, RunOption::default(days_restriction));
