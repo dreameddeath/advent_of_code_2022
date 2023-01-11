@@ -253,14 +253,13 @@ impl Context {
 pub fn run<F: Fn(&Context, &Vec<String>)>(
     context: Context,
     fct: &F,
-    //lines: &Vec<String>,
     mode: &Mode,
 ) {
     log!(info, &context, "Starting");
 
     let start_read = Instant::now();
     let lines = to_lines(&context.day, context.part, &context.data_set);
-    let read_duration = start_read.elapsed().as_millis();
+    let read_duration = start_read.elapsed().as_secs_f32() * 1000.0;
     let nb_max = if *mode == Mode::BENCH { 10 } else { 1 };
     let start = Instant::now();
     let mut count = 0;
@@ -268,14 +267,14 @@ pub fn run<F: Fn(&Context, &Vec<String>)>(
         count += 1;
         fct(&context, &lines);
     }
-    let duration = start.elapsed().as_millis() as u64;
+    let duration = start.elapsed().as_secs_f32() * 1000.0;
 
     log!(
         info,
         context,
-        "Duration {} ms (avg {} for #{} iterations) and {} ms for read",
+        "Duration {:.2} ms (avg {:.2} for #{} iterations) and {:.2} ms for read",
         duration,
-        duration as f64 / nb_max as f64,
+        duration / nb_max as f32,
         count,
         read_duration
     );
@@ -284,14 +283,13 @@ pub fn run<F: Fn(&Context, &Vec<String>)>(
 pub fn run_simult<F: Fn(&Context, &Vec<String>)>(
     context: Context,
     fct: &F,
-    //lines: &Vec<String>,
     mode: &Mode,
 ) {
     log!(info, context, "Starting");
 
     let start_read = Instant::now();
     let lines = to_lines(&context.day, None, &context.data_set);
-    let read_duration = start_read.elapsed().as_millis();
+    let read_duration = start_read.elapsed().as_secs_f32() * 1000.0;
 
     let nb_max = if *mode == Mode::BENCH { 10 } else { 1 };
     let start = Instant::now();
@@ -300,13 +298,13 @@ pub fn run_simult<F: Fn(&Context, &Vec<String>)>(
         count += 1;
         fct(&context, &lines);
     }
-    let duration = start.elapsed().as_millis() as u64;
+    let duration = start.elapsed().as_secs_f32() * 1000.0;
     log!(
         info,
         context,
-        "Duration {} ms (avg {} for #{} iterations) and {} for read",
+        "Duration {:.2} ms (avg {:.2} for #{} iterations) and {:.2} ms for read",
         duration,
-        duration as f64 / nb_max as f64,
+        duration / nb_max as f32,
         count,
         read_duration
     )
@@ -404,11 +402,11 @@ pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOpt
     }
 
     let mode = options.get_mode();
-    let start = Instant::now();
-
+    
     println!("");
     println!("");
     println!("[Day {}] run per part", day);
+    let start = Instant::now();
 
     run(
         Context::new_part(day, &options, Part::Part1, &Dataset::Test),
@@ -433,12 +431,13 @@ pub fn run_all<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options: RunOpt
         &fct,
         mode,
     );
+    let duration =  start.elapsed().as_secs_f32() * 1000.0;
     println!("");
 
     println!(
-        "[Day {}] done in {} ms",
+        "[Day {}] done in {:.2} ms",
         day,
-        start.elapsed().as_millis() as u64
+        duration
     );
 }
 
@@ -447,18 +446,20 @@ pub fn run_all_simult<F: Fn(&Context, &Vec<String>)>(day: &u8, fct: &F, options:
         return;
     }
     let mode = options.get_mode();
-    let start = Instant::now();
     println!("");
     println!("");
     println!("[Day {}] run global", day);
+    let start = Instant::now();
     run_simult(Context::new_all(day, &options, &Dataset::Test), fct, mode);
     println!("");
     run_simult(Context::new_all(day, &options, &Dataset::Real), fct, mode);
+    let duration = start.elapsed().as_secs_f32() * 1000.0;
     println!("");
+    
     println!(
-        "[Day {}] done in {} ms",
+        "[Day {}] done in {:.2} ms",
         day,
-        start.elapsed().as_millis() as u64
+        duration
     );
 }
 
